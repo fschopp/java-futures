@@ -1,0 +1,4 @@
+GROUP,PACKAGE,CLASS,INSTRUCTION_MISSED,INSTRUCTION_COVERED,BRANCH_MISSED,BRANCH_COVERED,LINE_MISSED,LINE_COVERED,COMPLEXITY_MISSED,COMPLEXITY_COVERED,METHOD_MISSED,METHOD_COVERED
+Java Futures,net.florianschoppmann.java.futures,Futures.CloseableWrapper,0,19,0,4,0,7,0,4,0,2
+Java Futures,net.florianschoppmann.java.futures,Futures,50,636,13,69,2,150,14,73,1,45
+Java Futures,net.florianschoppmann.java.futures,Futures.WrappedException,0,4,0,0,0,2,0,1,0,1
