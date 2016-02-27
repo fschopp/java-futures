@@ -43,8 +43,13 @@ Published releases (compiled for Java 8 and up) are available on Maven Central.
 
 ## Documentation
 
-- [API documentation](http://fschopp.github.io/java-futures/apidocs/index.html)
-- [Maven-generated project documentation](http://fschopp.github.io/java-futures)
+For current snapshot:
+
+- [API documentation](http://fschopp.github.io/java-futures/snapshot/apidocs)
+- [Maven-generated project documentation](http://fschopp.github.io/java-futures/snapshot)
+
+Release documentation is available by replacing “snapshot” in the URL by the
+respective version number (such as “1.0.0”).
 
 ## Usage Examples
 
