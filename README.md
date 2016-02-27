@@ -19,11 +19,14 @@ Bridge gaps and help overcome inconveniences with
   etc. that accept functions throwing checked exceptions
 - method similar to Scala’s
   [`Promise#completeWith`](http://www.scala-lang.org/api/current/index.html#scala.concurrent.Promise@completeWith(other:scala.concurrent.Future[T]):Promise.this.type)
-- method for unwrapping `CompletionException`
+- method for unwrapping
+  [`CompletionException`](http://docs.oracle.com/javase/8/docs/api/java/util/concurrent/CompletionException.html)
 - method for exception mapping
 - methods for dealing with asynchronous
   “[try-with-resources](https://docs.oracle.com/javase/specs/jls/se8/html/jls-14.html#jls-14.20.3)”
   scenarios
+- tests have virtually
+  [full code coverage](http://fschopp.github.io/java-futures/snapshot/jacoco)
 
 ## License
 
