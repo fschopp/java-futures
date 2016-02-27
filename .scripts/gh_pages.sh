@@ -50,6 +50,6 @@ fi
 # Add site and commit
 git add --force --all
 git commit -m "New site for version '${version}'."
-git push ${localrepo} gh-pages > /dev/null
+git push "${localrepo}" gh-pages
 
 echo "Successfully committed new site to branch 'gh-pages'."

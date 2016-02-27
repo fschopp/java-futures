@@ -68,10 +68,11 @@ CompletableFuture<Integer> sum(Set<CompletionStage<Integer>> set) {
 ### Equivalent methods allowing for checked exceptions
 
 ```java
-CompletableFuture<Long> fileSize(CompletionStage<Path> filePathStage) {
+CompletableFuture<Long> fileSize(CompletionStage<Path> filePathStage,
+        Executor executor) {
     // Note that Files#size(Path) throws an IOException, hence it would have to
     // be wrapped in the lambda expression passed to
     // CompletionStage#thenApply(Function).
-    return Futures.thenApplyAsync(Files::size);
+    return Futures.thenApplyAsync(filePathStage, Files::size, executor);
 }
 ```
