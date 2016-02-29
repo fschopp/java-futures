@@ -688,6 +688,6 @@ public class FuturesTest {
     @Test
     public void decode() {
         CompletionException exception = new CompletionException(null);
-        Assert.assertSame(Futures.decode(exception), exception);
+        Assert.assertSame(Futures.unwrapCompletionException(exception), exception);
     }
 }

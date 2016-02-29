@@ -55,7 +55,7 @@ public final class Futures {
                 } else {
                     completionStage.whenComplete((element, throwable) -> {
                         if (throwable != null) {
-                            newListFuture.completeExceptionally(encodeException(throwable));
+                            newListFuture.completeExceptionally(wrapInCompletionException(throwable));
                         } else {
                             list.add(element);
                             newListFuture.complete(list);
@@ -101,7 +101,7 @@ public final class Futures {
                         if (listThrowable != null) {
                             newListFuture.completeExceptionally(listThrowable);
                         } else {
-                            newListFuture.completeExceptionally(encodeException(throwable));
+                            newListFuture.completeExceptionally(wrapInCompletionException(throwable));
                         }
                     } else {
                         if (listThrowable != null) {
@@ -207,6 +207,40 @@ public final class Futures {
                 completableFuture.complete(result);
             }
         });
+    }
+
+    /**
+     * Returns a {@link CompletionException} containing the given {@link Throwable} as cause, unless the given
+     * {@link Throwable} is a {@link CompletionException}, in which case it itself is returned.
+     *
+     * <p>This function exists to match the behavior of {@link CompletableFuture}.
+     *
+     * @param throwable the exception or error
+     * @return the completion exception
+     */
+    public static CompletionException wrapInCompletionException(Throwable throwable) {
+        return throwable instanceof CompletionException
+            ? (CompletionException) throwable
+            : new CompletionException(throwable);
+    }
+
+    /**
+     * If the given {@link Throwable} is a {@link CompletionException} with cause, returns this. Otherwise, returns the
+     * given throwable.
+     *
+     * <p>See also {@link #wrapInCompletionException(Throwable)}.
+     *
+     * @param throwable the exception or error
+     * @return the cause
+     */
+    public static Throwable unwrapCompletionException(Throwable throwable) {
+        if (throwable instanceof CompletionException) {
+            @Nullable Throwable cause = throwable.getCause();
+            if (cause != null) {
+                return cause;
+            }
+        }
+        return throwable;
     }
 
     /**
@@ -355,40 +389,6 @@ public final class Futures {
         return thenComposeInternal(action -> completionStage.whenCompleteAsync(action, executor), checkedFunction);
     }
 
-    /**
-     * Returns a {@link CompletionException} containing the given {@link Throwable} as cause, unless the given
-     * {@link Throwable} is a {@link CompletionException}, in which case it itself is returned.
-     *
-     * <p>This function exists to match the behavior of {@link CompletableFuture}.
-     *
-     * @param throwable the exception or error
-     * @return the completion exception
-     */
-    private static CompletionException encodeException(Throwable throwable) {
-        return throwable instanceof CompletionException
-            ? (CompletionException) throwable
-            : new CompletionException(throwable);
-    }
-
-    /**
-     * If the given {@link Throwable} is a {@link CompletionException} with cause, returns this. Otherwise, returns the
-     * given throwable.
-     *
-     * <p>See also {@link #encodeException(Throwable)}.
-     *
-     * @param throwable the exception or error
-     * @return the cause
-     */
-    static Throwable decode(Throwable throwable) {
-        if (throwable instanceof CompletionException) {
-            @Nullable Throwable cause = throwable.getCause();
-            if (cause != null) {
-                return cause;
-            }
-        }
-        return throwable;
-    }
-
     private static <T, U> CompletableFuture<U> thenComposeInternal(
             Function<BiConsumer<? super T, ? super Throwable>, CompletionStage<T>> whenCompleteStage,
             CheckedFunction<? super T, ? extends CompletionStage<U>> checkedFunction) {
@@ -400,7 +400,7 @@ public final class Futures {
                         CompletionStage<U> nextStage = Objects.requireNonNull(checkedFunction.checkedApply(result));
                         nextStage.whenComplete((nextResult, nextFailure) -> {
                             if (nextFailure != null) {
-                                future.completeExceptionally(encodeException(nextFailure));
+                                future.completeExceptionally(wrapInCompletionException(nextFailure));
                             } else {
                                 future.complete(nextResult);
                             }
@@ -616,7 +616,7 @@ public final class Futures {
                             try {
                                 resource.close();
                             } catch (Throwable throwable) {
-                                decode(failure).addSuppressed(throwable);
+                                unwrapCompletionException(failure).addSuppressed(throwable);
                             }
                         } else {
                             resource.close();
