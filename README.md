@@ -40,7 +40,7 @@ Published releases (compiled for Java 8 and up) are available on Maven Central.
 <dependency>
     <groupId>net.florianschoppmann.java</groupId>
     <artifactId>java-futures</artifactId>
-    <version>1.0.0</version>
+    <version>1.1.0</version>
 </dependency>
 ```
 
@@ -52,7 +52,7 @@ For current snapshot:
 - [Maven-generated project documentation](http://fschopp.github.io/java-futures/snapshot)
 
 Release documentation is available by replacing “snapshot” in the URL by the
-respective version number (such as “1.0.0”).
+respective version number (such as “1.1.0”).
 
 ## Usage Examples
 

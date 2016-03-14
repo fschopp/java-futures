@@ -45,8 +45,7 @@
    [OSSRH](https://oss.sonatype.org/). See the
    [OSSRH documentation](http://central.sonatype.org/pages/releasing-the-deployment.html)
    for screen shots.
-6. Check out the release commit created in step 2. Run
-   `.scripts/publish_site.sh` in order to generate documentation for the new
-   release. This will create a new local (and only local) git commit in branch
-   `gh-pages`.
+6. Check out the release commit created in step 2. Run `.scripts/gh_pages.sh`
+   in order to generate documentation for the new release. This will create a
+   new local (and only local) git commit in branch `gh-pages`.
 7. Push the local git commit to branch `gh-pages` upstream.
