@@ -4,7 +4,7 @@
 
     <groupId>net.florianschoppmann.java</groupId>
     <artifactId>java-futures</artifactId>
-    <version>1.1.0</version>
+    <version>1.1.1-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <name>Java Futures</name>
@@ -29,7 +29,7 @@
         <url>https://github.com/fschopp/java-futures</url>
         <connection>scm:git:https://github.com/fschopp/java-futures.git</connection>
         <developerConnection>scm:git:https://github.com/fschopp/java-futures.git</developerConnection>
-        <tag>v1.1.0</tag>
+        <tag>master</tag>
     </scm>
 
     <issueManagement>
