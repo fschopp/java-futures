@@ -1,0 +1,653 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>Futures.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Java Futures</a> &gt; <a href="index.source.html" class="el_package">net.florianschoppmann.java.futures</a> &gt; <span class="el_source">Futures.java</span></div><h1>Futures.java</h1><pre class="source lang-java linenums">package net.florianschoppmann.java.futures;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.Executor;
+import java.util.function.BiConsumer;
+import java.util.function.Function;
+import java.util.function.Supplier;
+import javax.annotation.Nullable;
+
+/**
+ * This class consists exclusively of static methods that operate on {@link CompletionStage} and
+ * {@link CompletableFuture} instances.
+ */
+<span class="pc bpc" id="L19" title="1 of 2 branches missed.">public final class Futures {</span>
+<span class="nc" id="L20">    private Futures() {</span>
+<span class="nc" id="L21">        throw new AssertionError(String.format(&quot;No %s instances for you!&quot;, getClass().getName()));</span>
+    }
+
+    /**
+     * Returns a new {@link CompletableFuture} that will normally be completed with the list of results of all given
+     * completion stages. The future will fail early if any of the given stages are completed exceptionally.
+     *
+     * &lt;p&gt;If any of the given completion stages completes exceptionally, then the returned future is completed with a
+     * {@link CompletionException}. This is either the first encountered exception (in the order of the given
+     * {@link Iterable}) if that is a {@link CompletionException}, or otherwise a fresh {@link CompletionException}
+     * holding the first encountered exception as cause.
+     *
+     * &lt;p&gt;Unlike {@link #collect(Iterable)}, the returned future may be completed before all completion stages are
+     * completed. Specifically, in case of exceptional completion of the returned future, some of the given completion
+     * stages may not yet be completed.
+     *
+     * &lt;p&gt;The order of the given completion stages is preserved in the result list.
+     *
+     * @param completionStages completion stages supplying the elements of the list that the returned future will be
+     *     completed with
+     * @param &lt;T&gt; the element type of the list that the new future will be completed with
+     * @return the new future
+     */
+    public static &lt;T&gt; CompletableFuture&lt;List&lt;T&gt;&gt; shortCircuitCollect(
+            Iterable&lt;? extends CompletionStage&lt;? extends T&gt;&gt; completionStages) {
+<span class="fc" id="L46">        Objects.requireNonNull(completionStages);</span>
+
+<span class="fc" id="L48">        CompletableFuture&lt;List&lt;T&gt;&gt; listFuture = CompletableFuture.completedFuture((List&lt;T&gt;) new ArrayList&lt;T&gt;());</span>
+<span class="fc bfc" id="L49" title="All 2 branches covered.">        for (CompletionStage&lt;? extends T&gt; completionStage: completionStages) {</span>
+<span class="fc" id="L50">            CompletableFuture&lt;List&lt;T&gt;&gt; newListFuture = new CompletableFuture&lt;&gt;();</span>
+<span class="fc" id="L51">            listFuture.whenComplete((list, listThrowable) -&gt; {</span>
+<span class="pc bpc" id="L52" title="2 of 6 branches missed.">                assert list != null || listThrowable != null;</span>
+<span class="fc bfc" id="L53" title="All 2 branches covered.">                if (listThrowable != null) {</span>
+<span class="fc" id="L54">                    newListFuture.completeExceptionally(listThrowable);</span>
+                } else {
+<span class="fc" id="L56">                    completionStage.whenComplete((element, throwable) -&gt; {</span>
+<span class="fc bfc" id="L57" title="All 2 branches covered.">                        if (throwable != null) {</span>
+<span class="fc" id="L58">                            newListFuture.completeExceptionally(wrapInCompletionException(throwable));</span>
+                        } else {
+<span class="fc" id="L60">                            list.add(element);</span>
+<span class="fc" id="L61">                            newListFuture.complete(list);</span>
+                        }
+<span class="fc" id="L63">                    });</span>
+                }
+<span class="fc" id="L65">            });</span>
+<span class="fc" id="L66">            listFuture = newListFuture;</span>
+<span class="fc" id="L67">        }</span>
+<span class="fc" id="L68">        return listFuture;</span>
+    }
+
+    /**
+     * Returns a new {@link CompletableFuture} that will normally be completed with a list of results of all given
+     * completion stages.
+     *
+     * &lt;p&gt;If any of the given completion stages completes exceptionally, then the returned future is completed with a
+     * {@link CompletionException}. This is either the first encountered exception (in the order of the given
+     * {@link Iterable}) if that is a {@link CompletionException}, or otherwise a fresh {@link CompletionException}
+     * holding the first encountered exception as cause.
+     *
+     * &lt;p&gt;Similar to {@link CompletableFuture#allOf(CompletableFuture[])}, this method guarantees that the returned
+     * future will only be completed &lt;em&gt;after&lt;/em&gt; all given completion stages have completed.
+     *
+     * &lt;p&gt;The order of the given completion stages is preserved in the result list.
+     *
+     * @param completionStages completion stages supplying the elements of the list that the returned future will be
+     *     completed with
+     * @param &lt;T&gt; the element type of the list that the new future will be completed with
+     * @return future that will be completed with a list of the values that the given futures will be completed with
+     */
+    public static &lt;T&gt; CompletableFuture&lt;List&lt;T&gt;&gt; collect(
+            Iterable&lt;? extends CompletionStage&lt;? extends T&gt;&gt; completionStages) {
+<span class="fc" id="L92">        Objects.requireNonNull(completionStages);</span>
+
+<span class="fc" id="L94">        CompletableFuture&lt;List&lt;T&gt;&gt; listFuture = CompletableFuture.completedFuture((List&lt;T&gt;) new ArrayList&lt;T&gt;());</span>
+<span class="fc bfc" id="L95" title="All 2 branches covered.">        for (CompletionStage&lt;? extends T&gt; completionStage: completionStages) {</span>
+<span class="fc" id="L96">            CompletableFuture&lt;List&lt;T&gt;&gt; newListFuture = new CompletableFuture&lt;&gt;();</span>
+<span class="fc" id="L97">            listFuture.whenComplete((list, listThrowable) -&gt; {</span>
+<span class="pc bpc" id="L98" title="2 of 6 branches missed.">                assert list != null || listThrowable != null;</span>
+<span class="fc" id="L99">                completionStage.whenComplete((element, throwable) -&gt; {</span>
+<span class="fc bfc" id="L100" title="All 2 branches covered.">                    if (throwable != null) {</span>
+<span class="fc bfc" id="L101" title="All 2 branches covered.">                        if (listThrowable != null) {</span>
+<span class="fc" id="L102">                            newListFuture.completeExceptionally(listThrowable);</span>
+                        } else {
+<span class="fc" id="L104">                            newListFuture.completeExceptionally(wrapInCompletionException(throwable));</span>
+                        }
+                    } else {
+<span class="fc bfc" id="L107" title="All 2 branches covered.">                        if (listThrowable != null) {</span>
+<span class="fc" id="L108">                            newListFuture.completeExceptionally(listThrowable);</span>
+                        } else {
+<span class="fc" id="L110">                            list.add(element);</span>
+<span class="fc" id="L111">                            newListFuture.complete(list);</span>
+                        }
+                    }
+<span class="fc" id="L114">                });</span>
+<span class="fc" id="L115">            });</span>
+<span class="fc" id="L116">            listFuture = newListFuture;</span>
+<span class="fc" id="L117">        }</span>
+<span class="fc" id="L118">        return listFuture;</span>
+    }
+
+    /**
+     * Returns a new {@link CompletableFuture} that is already completed with the value obtained by calling the given
+     * {@link CheckedSupplier}.
+     *
+     * &lt;p&gt;While calling this method is normally equivalent to calling {@link CompletableFuture#completedFuture(Object)}
+     * with the value returned by the given supplier, this method can be helpful when chaining multiple futures, and the
+     * exception handling for the initial computation stage is supposed to be identical with the one in later stages.
+     * Just like {@link CompletableFuture#supplyAsync(Supplier, Executor)}, the returned future will be completed
+     * with a {@link CompletionException} if the given supplier throws.
+     *
+     * @param supplier a function returning the value to be used to complete the returned {@link CompletableFuture}
+     * @param &lt;T&gt; the function's return type
+     * @return the new future
+     */
+    public static &lt;T&gt; CompletableFuture&lt;T&gt; supply(CheckedSupplier&lt;T&gt; supplier) {
+<span class="fc" id="L136">        return supplyAsync(supplier, Runnable::run);</span>
+    }
+
+    private static CompletionException rewrap(CompletionException exception) {
+<span class="fc" id="L140">        Throwable cause = exception.getCause();</span>
+<span class="fc bfc" id="L141" title="All 2 branches covered.">        return cause instanceof WrappedException</span>
+<span class="fc" id="L142">            ? new CompletionException(cause.getCause())</span>
+            : exception;
+    }
+
+    /**
+     * Returns a new {@link CompletableFuture} that is asynchronously completed by a task running in the given executor
+     * with the value obtained by calling the given {@link CheckedSupplier}.
+     *
+     * &lt;p&gt;Just like {@link CompletableFuture#supplyAsync(Supplier, Executor)}, the returned future will be completed
+     * with a {@link CompletionException} if the given supplier throws.
+     *
+     * @param supplier a function returning the value to be used to complete the returned {@link CompletableFuture}
+     * @param executor the executor to use for asynchronous execution
+     * @param &lt;T&gt; the function's return type
+     * @return the new future
+     *
+     * @see CompletableFuture#supplyAsync(Supplier, Executor)
+     */
+    public static &lt;T&gt; CompletableFuture&lt;T&gt; supplyAsync(CheckedSupplier&lt;T&gt; supplier, Executor executor) {
+<span class="fc" id="L161">        CompletionStage&lt;T&gt; completionStage = CompletableFuture.supplyAsync(() -&gt; {</span>
+            try {
+<span class="fc" id="L163">                return supplier.checkedGet();</span>
+<span class="fc" id="L164">            } catch (Exception exception) {</span>
+<span class="fc" id="L165">                throw new WrappedException(exception);</span>
+            }
+        }, executor);
+
+<span class="fc" id="L169">        CompletableFuture&lt;T&gt; future = new CompletableFuture&lt;&gt;();</span>
+<span class="fc" id="L170">        completionStage.whenComplete((result, failure) -&gt; {</span>
+<span class="fc bfc" id="L171" title="All 2 branches covered.">            if (failure != null) {</span>
+<span class="pc bpc" id="L172" title="2 of 4 branches missed.">                assert failure instanceof CompletionException;</span>
+<span class="fc" id="L173">                future.completeExceptionally(rewrap((CompletionException) failure));</span>
+            } else {
+<span class="fc" id="L175">                future.complete(result);</span>
+            }
+<span class="fc" id="L177">        });</span>
+<span class="fc" id="L178">        return future;</span>
+    }
+
+    /**
+     * Returns a new {@link CompletableFuture} that is already exceptionally completed with the given {@link Throwable}.
+     *
+     * @param throwable the failure
+     * @param &lt;T&gt; type of the value (if the future had completed normally)
+     * @return the exceptionally completed future
+     */
+    public static &lt;T&gt; CompletableFuture&lt;T&gt; completedExceptionally(Throwable throwable) {
+<span class="fc" id="L189">        CompletableFuture&lt;T&gt; future = new CompletableFuture&lt;&gt;();</span>
+<span class="fc" id="L190">        future.completeExceptionally(throwable);</span>
+<span class="fc" id="L191">        return future;</span>
+    }
+
+    /**
+     * When the given {@link CompletionStage} completes either normally or exceptionally, completes the given
+     * {@link CompletableFuture} with its result.
+     *
+     * @param completableFuture future that will be completed with the result of {@code completionStage}
+     * @param completionStage completion stage providing the result for {@code completableFuture}
+     * @param &lt;T&gt; type of the result value if the stage completes normally
+     */
+    public static &lt;T&gt; void completeWith(CompletableFuture&lt;T&gt; completableFuture, CompletionStage&lt;T&gt; completionStage) {
+<span class="fc" id="L203">        completionStage.whenComplete((result, throwable) -&gt; {</span>
+<span class="fc bfc" id="L204" title="All 2 branches covered.">            if (throwable != null) {</span>
+<span class="fc" id="L205">                completableFuture.completeExceptionally(throwable);</span>
+            } else {
+<span class="fc" id="L207">                completableFuture.complete(result);</span>
+            }
+<span class="fc" id="L209">        });</span>
+<span class="fc" id="L210">    }</span>
+
+    /**
+     * Returns a {@link CompletionException} containing the given {@link Throwable} as cause, unless the given
+     * {@link Throwable} is a {@link CompletionException}, in which case it itself is returned.
+     *
+     * &lt;p&gt;This function exists to match the behavior of {@link CompletableFuture}.
+     *
+     * @param throwable the exception or error
+     * @return the completion exception
+     */
+    public static CompletionException wrapInCompletionException(Throwable throwable) {
+<span class="fc bfc" id="L222" title="All 2 branches covered.">        return throwable instanceof CompletionException</span>
+            ? (CompletionException) throwable
+            : new CompletionException(throwable);
+    }
+
+    /**
+     * If the given {@link Throwable} is a {@link CompletionException} with cause, returns this. Otherwise, returns the
+     * given throwable.
+     *
+     * &lt;p&gt;See also {@link #wrapInCompletionException(Throwable)}.
+     *
+     * @param throwable the exception or error
+     * @return the cause
+     */
+    public static Throwable unwrapCompletionException(Throwable throwable) {
+<span class="fc bfc" id="L237" title="All 2 branches covered.">        if (throwable instanceof CompletionException) {</span>
+<span class="fc" id="L238">            @Nullable Throwable cause = throwable.getCause();</span>
+<span class="fc bfc" id="L239" title="All 2 branches covered.">            if (cause != null) {</span>
+<span class="fc" id="L240">                return cause;</span>
+            }
+        }
+<span class="fc" id="L243">        return throwable;</span>
+    }
+
+    /**
+     * Returns a new {@link CompletableFuture} that will be completed in the same way as the given stage. However, in
+     * case of exceptional completion with a {@link CompletionException}, the returned future will be exceptionally
+     * completed with the &lt;em&gt;cause&lt;/em&gt; held in the {@link CompletionException}.
+     *
+     * @param completionStage the completion stage that may be completed with a {@link CompletionException}
+     * @param &lt;T&gt; the type of result of the completion stage
+     * @return the new future
+     */
+    public static &lt;T&gt; CompletableFuture&lt;T&gt; unwrapCompletionException(CompletionStage&lt;T&gt; completionStage) {
+<span class="fc" id="L256">        CompletableFuture&lt;T&gt; future = new CompletableFuture&lt;&gt;();</span>
+<span class="fc" id="L257">        completionStage.whenComplete((value, failure) -&gt; {</span>
+<span class="fc bfc" id="L258" title="All 2 branches covered.">            if (failure instanceof CompletionException) {</span>
+<span class="fc" id="L259">                @Nullable Throwable cause = failure.getCause();</span>
+<span class="fc bfc" id="L260" title="All 2 branches covered.">                if (cause != null) {</span>
+<span class="fc" id="L261">                    future.completeExceptionally(cause);</span>
+                } else {
+<span class="fc" id="L263">                    future.completeExceptionally(failure);</span>
+                }
+<span class="fc bfc" id="L265" title="All 2 branches covered.">            } else if (failure != null) {</span>
+<span class="fc" id="L266">                future.completeExceptionally(failure);</span>
+            } else {
+<span class="fc" id="L268">                future.complete(value);</span>
+            }
+<span class="fc" id="L270">        });</span>
+<span class="fc" id="L271">        return future;</span>
+    }
+
+    private static final class WrappedException extends RuntimeException {
+        private static final long serialVersionUID = -3891858012985643515L;
+
+        /**
+         * Constructs a new wrapped exception with the specified cause.
+         *
+         * @param cause the cause (which is saved for later retrieval by the {@link #getCause()} method)
+         */
+        private WrappedException(Throwable cause) {
+<span class="fc" id="L283">            super(cause);</span>
+<span class="fc" id="L284">        }</span>
+    }
+
+    /**
+     * Returns a new {@link CompletableFuture} that, when the given stage completes normally, is executed with that
+     * stage's result as the argument to the supplied function. See the {@link CompletionStage} documentation for rules
+     * covering exceptional completion.
+     *
+     * &lt;p&gt;If {@code function} was a {@link Function} instance identical to {@code checkedFunction}, except for not
+     * throwing checked exceptions, then this method is equivalent to {@code completionStage.thenApply(function)}.
+     *
+     * @param completionStage the completion stage providing the result for the given function
+     * @param checkedFunction the function to use to compute the value of the returned {@link CompletableFuture}
+     * @param &lt;T&gt; the function's argument type
+     * @param &lt;U&gt; the function's return type
+     * @return the new future
+     */
+    public static &lt;T, U&gt; CompletableFuture&lt;U&gt; thenApply(CompletionStage&lt;T&gt; completionStage,
+            CheckedFunction&lt;? super T, ? extends U&gt; checkedFunction) {
+        // Oddly, javac 1.8.0_73 fails with the type inference, so we need to do an explicit cast.
+<span class="fc" id="L304">        return thenApplyInternal(</span>
+            (Function&lt;BiConsumer&lt;? super T, ? super Throwable&gt;, CompletionStage&lt;T&gt;&gt;) completionStage::whenComplete,
+            checkedFunction
+        );
+    }
+
+    /**
+     * Returns a new {@link CompletableFuture} that, when the given stage completes normally, is executed using the
+     * supplied Executor, with the given stage's result as the argument to the supplied function. See the
+     * {@link CompletionStage} documentation for rules covering exceptional completion.
+     *
+     * &lt;p&gt;If {@code function} was a {@link Function} instance identical to {@code checkedFunction}, except for not
+     * throwing checked exceptions, then this method is equivalent to
+     * {@code completionStage.thenApplyAsync(function, executor)}.
+     *
+     * @param completionStage the completion stage providing the result for the given function
+     * @param checkedFunction the function to use to compute the value of the returned {@link CompletableFuture}
+     * @param executor the executor to use for asynchronous execution
+     * @param &lt;T&gt; the function's argument type
+     * @param &lt;U&gt; the function's return type
+     * @return the new future
+     */
+    public static &lt;T, U&gt; CompletableFuture&lt;U&gt; thenApplyAsync(CompletionStage&lt;T&gt; completionStage,
+            CheckedFunction&lt;? super T, ? extends U&gt; checkedFunction, Executor executor) {
+<span class="fc" id="L328">        return thenApplyInternal(action -&gt; completionStage.whenCompleteAsync(action, executor), checkedFunction);</span>
+    }
+
+    private static &lt;T, U&gt; CompletableFuture&lt;U&gt; thenApplyInternal(
+            Function&lt;BiConsumer&lt;? super T, ? super Throwable&gt;, CompletionStage&lt;T&gt;&gt; whenCompleteFunction,
+            CheckedFunction&lt;? super T, ? extends U&gt; checkedFunction) {
+<span class="fc" id="L334">        return transformCompletionStage(</span>
+            whenCompleteFunction,
+            (result, failure, future) -&gt; {
+<span class="fc bfc" id="L337" title="All 2 branches covered.">                if (failure == null) {</span>
+                    try {
+<span class="fc" id="L339">                        future.complete(checkedFunction.checkedApply(result));</span>
+<span class="fc" id="L340">                    } catch (Exception exception) {</span>
+<span class="fc" id="L341">                        throw new WrappedException(exception);</span>
+<span class="fc" id="L342">                    }</span>
+                }
+<span class="fc" id="L344">            }</span>
+        );
+    }
+
+    /**
+     * Returns a new {@link CompletableFuture} that, when the given stage completes normally, is executed with that
+     * stage as the argument to the supplied function. See the {@link CompletionStage} documentation for rules covering
+     * exceptional completion.
+     *
+     * &lt;p&gt;If {@code function} was a {@link Function} instance identical to {@code checkedFunction}, except for not
+     * throwing checked exceptions, then this method is equivalent to {@code completionStage.thenCompose(function)}.
+     *
+     * @param completionStage the completion stage providing the result for the given function
+     * @param checkedFunction the function returning a new {@link CompletionStage}
+     * @param &lt;T&gt; the function's argument type
+     * @param &lt;U&gt; the type of the returned {@link CompletionStage}'s result
+     * @return the new future
+     */
+    public static &lt;T, U&gt; CompletableFuture&lt;U&gt; thenCompose(CompletionStage&lt;T&gt; completionStage,
+            CheckedFunction&lt;? super T, ? extends CompletionStage&lt;U&gt;&gt; checkedFunction) {
+        // Oddly, javac 1.8.0_73 fails with the type inference, so we need to do an explicit cast.
+<span class="fc" id="L365">        return thenComposeInternal(</span>
+            (Function&lt;BiConsumer&lt;? super T, ? super Throwable&gt;, CompletionStage&lt;T&gt;&gt;) completionStage::whenComplete,
+            checkedFunction
+        );
+    }
+
+    /**
+     * Returns a new {@link CompletableFuture} that, when the given stage completes normally, is executed using the
+     * supplied {@link Executor}, with the given stage's result as the argument to the supplied function. See the
+     * {@link CompletionStage} documentation for rules covering exceptional completion.
+     *
+     * &lt;p&gt;If {@code function} was a {@link Function} instance identical to {@code checkedFunction}, except for not
+     * throwing checked exceptions, then this method is equivalent to
+     * {@code completionStage.thenComposeAsync(function, executor)}.
+     *
+     * @param completionStage the completion stage providing the result for the given function
+     * @param checkedFunction the function returning a new {@link CompletionStage}
+     * @param executor the executor to use for asynchronous execution
+     * @param &lt;T&gt; the function's argument type
+     * @param &lt;U&gt; the type of the returned {@link CompletionStage}'s result
+     * @return the new future
+     */
+    public static &lt;T, U&gt; CompletableFuture&lt;U&gt; thenComposeAsync(CompletionStage&lt;T&gt; completionStage,
+            CheckedFunction&lt;? super T, ? extends CompletionStage&lt;U&gt;&gt; checkedFunction, Executor executor) {
+<span class="fc" id="L389">        return thenComposeInternal(action -&gt; completionStage.whenCompleteAsync(action, executor), checkedFunction);</span>
+    }
+
+    private static &lt;T, U&gt; CompletableFuture&lt;U&gt; thenComposeInternal(
+            Function&lt;BiConsumer&lt;? super T, ? super Throwable&gt;, CompletionStage&lt;T&gt;&gt; whenCompleteStage,
+            CheckedFunction&lt;? super T, ? extends CompletionStage&lt;U&gt;&gt; checkedFunction) {
+<span class="fc" id="L395">        return transformCompletionStage(</span>
+            whenCompleteStage,
+            (result, failure, future) -&gt; {
+<span class="fc bfc" id="L398" title="All 2 branches covered.">                if (failure == null) {</span>
+                    try {
+<span class="fc" id="L400">                        CompletionStage&lt;U&gt; nextStage = Objects.requireNonNull(checkedFunction.checkedApply(result));</span>
+<span class="fc" id="L401">                        nextStage.whenComplete((nextResult, nextFailure) -&gt; {</span>
+<span class="fc bfc" id="L402" title="All 2 branches covered.">                            if (nextFailure != null) {</span>
+<span class="fc" id="L403">                                future.completeExceptionally(wrapInCompletionException(nextFailure));</span>
+                            } else {
+<span class="fc" id="L405">                                future.complete(nextResult);</span>
+                            }
+<span class="fc" id="L407">                        });</span>
+<span class="fc" id="L408">                    } catch (Exception exception) {</span>
+<span class="fc" id="L409">                        throw new WrappedException(exception);</span>
+<span class="fc" id="L410">                    }</span>
+                }
+<span class="fc" id="L412">            }</span>
+        );
+    }
+
+    /**
+     * Returns a new {@link CompletableFuture} with the same result or exception as the given stage, that executes the
+     * given action when the given stage completes.
+     *
+     * &lt;p&gt;When the given stage is complete, the given action is invoked with the result (or {@code null} if none) and
+     * the exception (or {@code null} if none) of the given stage as arguments. The returned future is completed when
+     * the action returns. If the supplied action itself encounters an exception, then the returned future exceptionally
+     * completes with this exception unless the given stage also completed exceptionally.
+     *
+     * @param completionStage the completion stage providing the result or exception for the given action
+     * @param action the action to perform
+     * @param &lt;T&gt; the action's first argument type
+     * @return the new future
+     */
+    public static &lt;T&gt; CompletableFuture&lt;T&gt; whenComplete(CompletionStage&lt;T&gt; completionStage,
+            CheckedBiConsumer&lt;? super T, ? super Throwable&gt; action) {
+        // Oddly, javac 1.8.0_73 fails with the type inference, so we need to do an explicit cast.
+<span class="fc" id="L433">        return whenCompleteInternal(</span>
+            (Function&lt;BiConsumer&lt;? super T, ? super Throwable&gt;, CompletionStage&lt;T&gt;&gt;) completionStage::whenComplete,
+            action
+        );
+    }
+
+    /**
+     * Returns a new {@link CompletableFuture} with the same result or exception as the given stage, that executes the
+     * given action using the supplied {@link Executor} when the given stage completes.
+     *
+     * &lt;p&gt;When the given stage is complete, the given action is invoked with the result (or {@code null} if none) and
+     * the exception (or {@code null} if none) of the given stage as arguments. The returned future is completed when
+     * the action returns. If the supplied action itself encounters an exception, then the returned future exceptionally
+     * completes with this exception unless the given stage also completed exceptionally.
+     *
+     * @param completionStage the completion stage providing the result or exception for the given action
+     * @param executor the executor to use for asynchronous execution
+     * @param action the action to perform
+     * @param &lt;T&gt; the action's first argument type
+     * @return the new future
+     */
+    public static &lt;T&gt; CompletableFuture&lt;T&gt; whenCompleteAsync(CompletionStage&lt;T&gt; completionStage,
+            CheckedBiConsumer&lt;? super T, ? super Throwable&gt; action, Executor executor) {
+<span class="fc" id="L456">        return whenCompleteInternal(actionArg -&gt; completionStage.whenCompleteAsync(actionArg, executor), action);</span>
+    }
+
+    private static &lt;T&gt; CompletableFuture&lt;T&gt; whenCompleteInternal(
+            Function&lt;BiConsumer&lt;? super T, ? super Throwable&gt;, CompletionStage&lt;T&gt;&gt; whenCompleteStage,
+            CheckedBiConsumer&lt;? super T, ? super Throwable&gt; action) {
+<span class="fc" id="L462">        return transformCompletionStage(</span>
+            whenCompleteStage,
+            (result, failure, future) -&gt; {
+                try {
+<span class="fc" id="L466">                    action.checkedAccept(result, failure);</span>
+<span class="fc bfc" id="L467" title="All 2 branches covered.">                    if (failure == null) {</span>
+<span class="fc" id="L468">                        future.complete(result);</span>
+                    }
+<span class="fc" id="L470">                } catch (Exception exception) {</span>
+<span class="fc" id="L471">                    throw new WrappedException(exception);</span>
+<span class="fc" id="L472">                }</span>
+<span class="fc" id="L473">            }</span>
+        );
+    }
+
+    /**
+     * Returns a new {@link CompletableFuture} that is normally completed with the same result as the given stage. If
+     * the given stage completed exceptionally, the given function is called with the exception as argument and the
+     * returned future is completed exceptionally with the result.
+     *
+     * &lt;p&gt;The exception returned by {@code function} is &lt;em&gt;not&lt;/em&gt; wrapped in a {@link CompletionException}. However,
+     * if an exception &lt;em&gt;E&lt;/em&gt; occurs in the given function, the returned future will be completed exceptionally with
+     * a {@link CompletionException} containing &lt;em&gt;E&lt;/em&gt; as cause.
+     *
+     * @param completionStage the completion stage providing the exception for the given function
+     * @param function the exception-translation function
+     * @param &lt;T&gt; the type of the completion stage
+     * @return the new future
+     */
+    public static &lt;T&gt; CompletableFuture&lt;T&gt; translateException(CompletionStage&lt;T&gt; completionStage,
+            Function&lt;Throwable, Throwable&gt; function) {
+<span class="fc" id="L493">        CompletableFuture&lt;T&gt; future = new CompletableFuture&lt;&gt;();</span>
+<span class="fc" id="L494">        completionStage</span>
+<span class="fc" id="L495">            .handle((result, failure) -&gt; {</span>
+<span class="fc bfc" id="L496" title="All 2 branches covered.">                if (failure != null) {</span>
+<span class="fc" id="L497">                    future.completeExceptionally(Objects.requireNonNull(function.apply(failure)));</span>
+                } else {
+<span class="fc" id="L499">                    future.complete(result);</span>
+                }
+<span class="fc" id="L501">                return null;</span>
+            })
+<span class="fc" id="L503">            .exceptionally(future::completeExceptionally);</span>
+<span class="fc" id="L504">        return future;</span>
+    }
+
+    @FunctionalInterface
+    interface TriConsumer&lt;T, U, V&gt; {
+        /**
+         * Performs this operation on the given arguments.
+         *
+         * @param first the first input argument
+         * @param second the second input argument
+         * @param third the third input argument
+         */
+        void accept(@Nullable T first, @Nullable U second, @Nullable V third);
+    }
+
+    /**
+     * Returns a new {@link CompletableFuture} that is normally completed by the given {@code resultConsumer}, and that
+     * is exceptionally completed if a failure occurs.
+     *
+     * &lt;p&gt;This method factors out common code in order to implement &lt;em&gt;thenApply&lt;/em&gt;, &lt;em&gt;thenCompose&lt;/em&gt;, etc.
+     * methods that that have corresponding methods in {@link CompletionStage}. However, the static methods in this
+     * class allow transformations that throw checked exceptions.
+     */
+    static &lt;T, U&gt; CompletableFuture&lt;U&gt; transformCompletionStage(
+        Function&lt;BiConsumer&lt;? super T, ? super Throwable&gt;, CompletionStage&lt;T&gt;&gt; whenCompleteFunction,
+        TriConsumer&lt;? super T, Throwable, CompletableFuture&lt;U&gt;&gt; resultConsumer
+    ) {
+<span class="fc" id="L531">        CompletableFuture&lt;U&gt; future = new CompletableFuture&lt;&gt;();</span>
+<span class="fc" id="L532">        whenCompleteFunction</span>
+<span class="fc" id="L533">            .apply((result, failure) -&gt; resultConsumer.accept(result, failure, future))</span>
+<span class="fc" id="L534">            .exceptionally(exception -&gt; {</span>
+                // Assuming that whenCompleteFunction is indeed method whenComplete or whenCompleteAsync, then we expect
+                // a CompletionException here. However, we are extra cautious here, because a failed assertion or a
+                // ClassCastException here could potentially create a debugging nightmare (it would be caught in
+                // CompletableFuture#exceptionally() and then ignored).
+<span class="fc bfc" id="L539" title="All 2 branches covered.">                future.completeExceptionally(</span>
+                    exception instanceof CompletionException
+<span class="fc" id="L541">                        ? rewrap((CompletionException) exception)</span>
+                        : exception
+                );
+                // Result of the new completion stage created by exceptionally() is ignored
+<span class="fc" id="L545">                return null;</span>
+            });
+<span class="fc" id="L547">        return future;</span>
+    }
+
+    /**
+     * Returns a new {@link CompletableFuture} that, when the given stage completes normally, is executed using the
+     * supplied Executor, with the given stage's result as the argument to the supplied function. See the
+     * {@link CompletionStage} documentation for rules covering exceptional completion.
+     *
+     * &lt;p&gt;This method behaves like {@link #thenApplyAsync(CompletionStage, CheckedFunction, Executor)}, but it ensures
+     * that the resource passed to {@code function} is properly closed, even if an exception occurs at any stage. This
+     * method may thus be regarded as an asynchronous try-with-resources implementation (with just one resource: The
+     * {@code R} instance that {@code resourceStage} will is completed with).
+     *
+     * &lt;p&gt;Similar to try-with-resources, if an exception occurs after the {@link AutoCloseable} resource has been
+     * opened, then any further exception while automatically closing the resource will be added as suppressed
+     * exception. Suppressed exceptions are added to the original exception, not the {@link CompletionException} that
+     * the returned future would be completed with and that contains the original exception as cause.
+     *
+     * @param resourceStage completion stage that will be completed with an {@link AutoCloseable}
+     * @param function function computing the result for the new future
+     * @param executor the executor to use for asynchronous execution
+     * @param &lt;R&gt; the type of the resource returned by the given completion stage
+     * @param &lt;T&gt; the type of the value returned by the given function
+     * @return the new future
+     */
+    public static &lt;R extends AutoCloseable, T&gt; CompletableFuture&lt;T&gt; thenApplyWithResourceAsync(
+            CompletionStage&lt;R&gt; resourceStage, CheckedFunction&lt;? super R, ? extends T&gt; function,
+            Executor executor) {
+<span class="fc" id="L575">        return thenApplyAsync(resourceStage, resource -&gt; {</span>
+<span class="fc" id="L576">            try (R ignored = resource) {</span>
+<span class="fc" id="L577">                return function.checkedApply(resource);</span>
+<span class="pc bpc" id="L578" title="2 of 8 branches missed.">            }</span>
+        }, executor);
+    }
+
+    /**
+     * Returns a new {@link CompletableFuture} that, when the given stage completes normally, is executed with that
+     * stage as the argument to the supplied function. See the {@link CompletionStage} documentation for rules covering
+     * exceptional completion.
+     *
+     * &lt;p&gt;This method behaves like {@link #thenCompose(CompletionStage, CheckedFunction)}, but it ensures that the
+     * resource passed to {@code function} is properly closed, even if an exception occurs at any stage. This method may
+     * thus be regarded as an asynchronous try-with-resources implementation (with just one resource: The {@code R}
+     * instance that {@code resourceStage} will is completed with).
+     *
+     * &lt;p&gt;Similar to try-with-resources, if an exception occurs after the {@link AutoCloseable} resource has been
+     * opened, then any further exception while automatically closing the resource will be added as suppressed
+     * exception. Suppressed exceptions are added to the original exception, not the {@link CompletionException} that
+     * the returned future would be completed with and that contains the original exception as cause.
+     *
+     * @param resourceStage completion stage that will be completed with an {@link AutoCloseable}
+     * @param function Function returning a completion stage that will compute the result for the new future.
+     * @param &lt;R&gt; the type of the resource returned by the given completion stage
+     * @param &lt;T&gt; the result type of the future returned by the given function
+     * @return the new future
+     */
+    public static &lt;R extends AutoCloseable, T&gt; CompletableFuture&lt;T&gt; thenComposeWithResource(
+            CompletionStage&lt;R&gt; resourceStage,
+            CheckedFunction&lt;? super R, ? extends CompletionStage&lt;T&gt;&gt; function) {
+<span class="fc" id="L606">        return thenCompose(resourceStage, resource -&gt; {</span>
+<span class="fc" id="L607">            try (CloseableWrapper closeableWrapper = new CloseableWrapper(resource)) {</span>
+<span class="fc" id="L608">                CompletionStage&lt;T&gt; nextStage = Objects.requireNonNull(function.checkedApply(resource));</span>
+<span class="fc" id="L609">                closeableWrapper.ignoreClose = true;</span>
+<span class="fc" id="L610">                return whenComplete(nextStage, (result, failure) -&gt; {</span>
+                    // According to JLS8 §14.20.3.1, if a primary exception has occurred, then whatever exception occurs
+                    // during close() is added as suppressed exception, even in case of a Throwable that is not an
+                    // Exception.
+<span class="fc bfc" id="L614" title="All 2 branches covered.">                    if (resource != null) {</span>
+<span class="fc bfc" id="L615" title="All 2 branches covered.">                        if (failure != null) {</span>
+                            try {
+<span class="fc" id="L617">                                resource.close();</span>
+<span class="fc" id="L618">                            } catch (Throwable throwable) {</span>
+<span class="fc" id="L619">                                unwrapCompletionException(failure).addSuppressed(throwable);</span>
+<span class="fc" id="L620">                            }</span>
+                        } else {
+<span class="fc" id="L622">                            resource.close();</span>
+                        }
+                    }
+<span class="fc" id="L625">                });</span>
+<span class="pc bpc" id="L626" title="4 of 8 branches missed.">            }</span>
+        });
+    }
+
+    private static final class CloseableWrapper implements AutoCloseable {
+        @Nullable private final AutoCloseable closeable;
+
+        /**
+         * No need to synchronize access to this field. The read from {@link #close()} here will always happen either
+         * before or after it is written to, never concurrent to a write in
+         * {@link #thenComposeWithResource(CompletionStage, CheckedFunction)}. However, the field has to be volatile
+         * for cache coherence.
+         */
+<span class="fc" id="L639">        private volatile boolean ignoreClose = false;</span>
+
+<span class="fc" id="L641">        private CloseableWrapper(@Nullable AutoCloseable closeable) {</span>
+<span class="fc" id="L642">            this.closeable = closeable;</span>
+<span class="fc" id="L643">        }</span>
+
+        @Override
+        public void close() throws Exception {
+<span class="fc bfc" id="L647" title="All 4 branches covered.">            if (closeable != null &amp;&amp; !ignoreClose) {</span>
+<span class="fc" id="L648">                closeable.close();</span>
+            }
+<span class="fc" id="L650">        }</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.6.201602180812</span></div></body></html>
