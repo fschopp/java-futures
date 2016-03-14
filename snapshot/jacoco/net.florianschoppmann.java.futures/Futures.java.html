@@ -55,7 +55,7 @@ import javax.annotation.Nullable;
                 } else {
 <span class="fc" id="L56">                    completionStage.whenComplete((element, throwable) -&gt; {</span>
 <span class="fc bfc" id="L57" title="All 2 branches covered.">                        if (throwable != null) {</span>
-<span class="fc" id="L58">                            newListFuture.completeExceptionally(encodeException(throwable));</span>
+<span class="fc" id="L58">                            newListFuture.completeExceptionally(wrapInCompletionException(throwable));</span>
                         } else {
 <span class="fc" id="L60">                            list.add(element);</span>
 <span class="fc" id="L61">                            newListFuture.complete(list);</span>
@@ -101,7 +101,7 @@ import javax.annotation.Nullable;
 <span class="fc bfc" id="L101" title="All 2 branches covered.">                        if (listThrowable != null) {</span>
 <span class="fc" id="L102">                            newListFuture.completeExceptionally(listThrowable);</span>
                         } else {
-<span class="fc" id="L104">                            newListFuture.completeExceptionally(encodeException(throwable));</span>
+<span class="fc" id="L104">                            newListFuture.completeExceptionally(wrapInCompletionException(throwable));</span>
                         }
                     } else {
 <span class="fc bfc" id="L107" title="All 2 branches covered.">                        if (listThrowable != null) {</span>
@@ -210,6 +210,40 @@ import javax.annotation.Nullable;
 <span class="fc" id="L210">    }</span>
 
     /**
+     * Returns a {@link CompletionException} containing the given {@link Throwable} as cause, unless the given
+     * {@link Throwable} is a {@link CompletionException}, in which case it itself is returned.
+     *
+     * &lt;p&gt;This function exists to match the behavior of {@link CompletableFuture}.
+     *
+     * @param throwable the exception or error
+     * @return the completion exception
+     */
+    public static CompletionException wrapInCompletionException(Throwable throwable) {
+<span class="fc bfc" id="L222" title="All 2 branches covered.">        return throwable instanceof CompletionException</span>
+            ? (CompletionException) throwable
+            : new CompletionException(throwable);
+    }
+
+    /**
+     * If the given {@link Throwable} is a {@link CompletionException} with cause, returns this. Otherwise, returns the
+     * given throwable.
+     *
+     * &lt;p&gt;See also {@link #wrapInCompletionException(Throwable)}.
+     *
+     * @param throwable the exception or error
+     * @return the cause
+     */
+    public static Throwable unwrapCompletionException(Throwable throwable) {
+<span class="fc bfc" id="L237" title="All 2 branches covered.">        if (throwable instanceof CompletionException) {</span>
+<span class="fc" id="L238">            @Nullable Throwable cause = throwable.getCause();</span>
+<span class="fc bfc" id="L239" title="All 2 branches covered.">            if (cause != null) {</span>
+<span class="fc" id="L240">                return cause;</span>
+            }
+        }
+<span class="fc" id="L243">        return throwable;</span>
+    }
+
+    /**
      * Returns a new {@link CompletableFuture} that will be completed in the same way as the given stage. However, in
      * case of exceptional completion with a {@link CompletionException}, the returned future will be exceptionally
      * completed with the &lt;em&gt;cause&lt;/em&gt; held in the {@link CompletionException}.
@@ -219,22 +253,22 @@ import javax.annotation.Nullable;
      * @return the new future
      */
     public static &lt;T&gt; CompletableFuture&lt;T&gt; unwrapCompletionException(CompletionStage&lt;T&gt; completionStage) {
-<span class="fc" id="L222">        CompletableFuture&lt;T&gt; future = new CompletableFuture&lt;&gt;();</span>
-<span class="fc" id="L223">        completionStage.whenComplete((value, failure) -&gt; {</span>
-<span class="fc bfc" id="L224" title="All 2 branches covered.">            if (failure instanceof CompletionException) {</span>
-<span class="fc" id="L225">                @Nullable Throwable cause = failure.getCause();</span>
-<span class="fc bfc" id="L226" title="All 2 branches covered.">                if (cause != null) {</span>
-<span class="fc" id="L227">                    future.completeExceptionally(cause);</span>
+<span class="fc" id="L256">        CompletableFuture&lt;T&gt; future = new CompletableFuture&lt;&gt;();</span>
+<span class="fc" id="L257">        completionStage.whenComplete((value, failure) -&gt; {</span>
+<span class="fc bfc" id="L258" title="All 2 branches covered.">            if (failure instanceof CompletionException) {</span>
+<span class="fc" id="L259">                @Nullable Throwable cause = failure.getCause();</span>
+<span class="fc bfc" id="L260" title="All 2 branches covered.">                if (cause != null) {</span>
+<span class="fc" id="L261">                    future.completeExceptionally(cause);</span>
                 } else {
-<span class="fc" id="L229">                    future.completeExceptionally(failure);</span>
+<span class="fc" id="L263">                    future.completeExceptionally(failure);</span>
                 }
-<span class="fc bfc" id="L231" title="All 2 branches covered.">            } else if (failure != null) {</span>
-<span class="fc" id="L232">                future.completeExceptionally(failure);</span>
+<span class="fc bfc" id="L265" title="All 2 branches covered.">            } else if (failure != null) {</span>
+<span class="fc" id="L266">                future.completeExceptionally(failure);</span>
             } else {
-<span class="fc" id="L234">                future.complete(value);</span>
+<span class="fc" id="L268">                future.complete(value);</span>
             }
-<span class="fc" id="L236">        });</span>
-<span class="fc" id="L237">        return future;</span>
+<span class="fc" id="L270">        });</span>
+<span class="fc" id="L271">        return future;</span>
     }
 
     private static final class WrappedException extends RuntimeException {
@@ -246,8 +280,8 @@ import javax.annotation.Nullable;
          * @param cause the cause (which is saved for later retrieval by the {@link #getCause()} method)
          */
         private WrappedException(Throwable cause) {
-<span class="fc" id="L249">            super(cause);</span>
-<span class="fc" id="L250">        }</span>
+<span class="fc" id="L283">            super(cause);</span>
+<span class="fc" id="L284">        }</span>
     }
 
     /**
@@ -267,7 +301,7 @@ import javax.annotation.Nullable;
     public static &lt;T, U&gt; CompletableFuture&lt;U&gt; thenApply(CompletionStage&lt;T&gt; completionStage,
             CheckedFunction&lt;? super T, ? extends U&gt; checkedFunction) {
         // Oddly, javac 1.8.0_73 fails with the type inference, so we need to do an explicit cast.
-<span class="fc" id="L270">        return thenApplyInternal(</span>
+<span class="fc" id="L304">        return thenApplyInternal(</span>
             (Function&lt;BiConsumer&lt;? super T, ? super Throwable&gt;, CompletionStage&lt;T&gt;&gt;) completionStage::whenComplete,
             checkedFunction
         );
@@ -291,23 +325,23 @@ import javax.annotation.Nullable;
      */
     public static &lt;T, U&gt; CompletableFuture&lt;U&gt; thenApplyAsync(CompletionStage&lt;T&gt; completionStage,
             CheckedFunction&lt;? super T, ? extends U&gt; checkedFunction, Executor executor) {
-<span class="fc" id="L294">        return thenApplyInternal(action -&gt; completionStage.whenCompleteAsync(action, executor), checkedFunction);</span>
+<span class="fc" id="L328">        return thenApplyInternal(action -&gt; completionStage.whenCompleteAsync(action, executor), checkedFunction);</span>
     }
 
     private static &lt;T, U&gt; CompletableFuture&lt;U&gt; thenApplyInternal(
             Function&lt;BiConsumer&lt;? super T, ? super Throwable&gt;, CompletionStage&lt;T&gt;&gt; whenCompleteFunction,
             CheckedFunction&lt;? super T, ? extends U&gt; checkedFunction) {
-<span class="fc" id="L300">        return transformCompletionStage(</span>
+<span class="fc" id="L334">        return transformCompletionStage(</span>
             whenCompleteFunction,
             (result, failure, future) -&gt; {
-<span class="fc bfc" id="L303" title="All 2 branches covered.">                if (failure == null) {</span>
+<span class="fc bfc" id="L337" title="All 2 branches covered.">                if (failure == null) {</span>
                     try {
-<span class="fc" id="L305">                        future.complete(checkedFunction.checkedApply(result));</span>
-<span class="fc" id="L306">                    } catch (Exception exception) {</span>
-<span class="fc" id="L307">                        throw new WrappedException(exception);</span>
-<span class="fc" id="L308">                    }</span>
+<span class="fc" id="L339">                        future.complete(checkedFunction.checkedApply(result));</span>
+<span class="fc" id="L340">                    } catch (Exception exception) {</span>
+<span class="fc" id="L341">                        throw new WrappedException(exception);</span>
+<span class="fc" id="L342">                    }</span>
                 }
-<span class="fc" id="L310">            }</span>
+<span class="fc" id="L344">            }</span>
         );
     }
 
@@ -328,7 +362,7 @@ import javax.annotation.Nullable;
     public static &lt;T, U&gt; CompletableFuture&lt;U&gt; thenCompose(CompletionStage&lt;T&gt; completionStage,
             CheckedFunction&lt;? super T, ? extends CompletionStage&lt;U&gt;&gt; checkedFunction) {
         // Oddly, javac 1.8.0_73 fails with the type inference, so we need to do an explicit cast.
-<span class="fc" id="L331">        return thenComposeInternal(</span>
+<span class="fc" id="L365">        return thenComposeInternal(</span>
             (Function&lt;BiConsumer&lt;? super T, ? super Throwable&gt;, CompletionStage&lt;T&gt;&gt;) completionStage::whenComplete,
             checkedFunction
         );
@@ -352,41 +386,7 @@ import javax.annotation.Nullable;
      */
     public static &lt;T, U&gt; CompletableFuture&lt;U&gt; thenComposeAsync(CompletionStage&lt;T&gt; completionStage,
             CheckedFunction&lt;? super T, ? extends CompletionStage&lt;U&gt;&gt; checkedFunction, Executor executor) {
-<span class="fc" id="L355">        return thenComposeInternal(action -&gt; completionStage.whenCompleteAsync(action, executor), checkedFunction);</span>
-    }
-
-    /**
-     * Returns a {@link CompletionException} containing the given {@link Throwable} as cause, unless the given
-     * {@link Throwable} is a {@link CompletionException}, in which case it itself is returned.
-     *
-     * &lt;p&gt;This function exists to match the behavior of {@link CompletableFuture}.
-     *
-     * @param throwable the exception or error
-     * @return the completion exception
-     */
-    private static CompletionException encodeException(Throwable throwable) {
-<span class="fc bfc" id="L368" title="All 2 branches covered.">        return throwable instanceof CompletionException</span>
-            ? (CompletionException) throwable
-            : new CompletionException(throwable);
-    }
-
-    /**
-     * If the given {@link Throwable} is a {@link CompletionException} with cause, returns this. Otherwise, returns the
-     * given throwable.
-     *
-     * &lt;p&gt;See also {@link #encodeException(Throwable)}.
-     *
-     * @param throwable the exception or error
-     * @return the cause
-     */
-    static Throwable decode(Throwable throwable) {
-<span class="fc bfc" id="L383" title="All 2 branches covered.">        if (throwable instanceof CompletionException) {</span>
-<span class="fc" id="L384">            @Nullable Throwable cause = throwable.getCause();</span>
-<span class="fc bfc" id="L385" title="All 2 branches covered.">            if (cause != null) {</span>
-<span class="fc" id="L386">                return cause;</span>
-            }
-        }
-<span class="fc" id="L389">        return throwable;</span>
+<span class="fc" id="L389">        return thenComposeInternal(action -&gt; completionStage.whenCompleteAsync(action, executor), checkedFunction);</span>
     }
 
     private static &lt;T, U&gt; CompletableFuture&lt;U&gt; thenComposeInternal(
@@ -400,7 +400,7 @@ import javax.annotation.Nullable;
 <span class="fc" id="L400">                        CompletionStage&lt;U&gt; nextStage = Objects.requireNonNull(checkedFunction.checkedApply(result));</span>
 <span class="fc" id="L401">                        nextStage.whenComplete((nextResult, nextFailure) -&gt; {</span>
 <span class="fc bfc" id="L402" title="All 2 branches covered.">                            if (nextFailure != null) {</span>
-<span class="fc" id="L403">                                future.completeExceptionally(encodeException(nextFailure));</span>
+<span class="fc" id="L403">                                future.completeExceptionally(wrapInCompletionException(nextFailure));</span>
                             } else {
 <span class="fc" id="L405">                                future.complete(nextResult);</span>
                             }
@@ -616,7 +616,7 @@ import javax.annotation.Nullable;
                             try {
 <span class="fc" id="L617">                                resource.close();</span>
 <span class="fc" id="L618">                            } catch (Throwable throwable) {</span>
-<span class="fc" id="L619">                                decode(failure).addSuppressed(throwable);</span>
+<span class="fc" id="L619">                                unwrapCompletionException(failure).addSuppressed(throwable);</span>
 <span class="fc" id="L620">                            }</span>
                         } else {
 <span class="fc" id="L622">                            resource.close();</span>

@@ -63,7 +63,7 @@
 <a class="jxr_linenumber" name="L55" href="#L55">55</a>                  } <strong class="jxr_keyword">else</strong> {
 <a class="jxr_linenumber" name="L56" href="#L56">56</a>                      completionStage.whenComplete((element, throwable) -&gt; {
 <a class="jxr_linenumber" name="L57" href="#L57">57</a>                          <strong class="jxr_keyword">if</strong> (throwable != <strong class="jxr_keyword">null</strong>) {
-<a class="jxr_linenumber" name="L58" href="#L58">58</a>                              newListFuture.completeExceptionally(encodeException(throwable));
+<a class="jxr_linenumber" name="L58" href="#L58">58</a>                              newListFuture.completeExceptionally(wrapInCompletionException(throwable));
 <a class="jxr_linenumber" name="L59" href="#L59">59</a>                          } <strong class="jxr_keyword">else</strong> {
 <a class="jxr_linenumber" name="L60" href="#L60">60</a>                              list.add(element);
 <a class="jxr_linenumber" name="L61" href="#L61">61</a>                              newListFuture.complete(list);
@@ -109,7 +109,7 @@
 <a class="jxr_linenumber" name="L101" href="#L101">101</a>                         <strong class="jxr_keyword">if</strong> (listThrowable != <strong class="jxr_keyword">null</strong>) {
 <a class="jxr_linenumber" name="L102" href="#L102">102</a>                             newListFuture.completeExceptionally(listThrowable);
 <a class="jxr_linenumber" name="L103" href="#L103">103</a>                         } <strong class="jxr_keyword">else</strong> {
-<a class="jxr_linenumber" name="L104" href="#L104">104</a>                             newListFuture.completeExceptionally(encodeException(throwable));
+<a class="jxr_linenumber" name="L104" href="#L104">104</a>                             newListFuture.completeExceptionally(wrapInCompletionException(throwable));
 <a class="jxr_linenumber" name="L105" href="#L105">105</a>                         }
 <a class="jxr_linenumber" name="L106" href="#L106">106</a>                     } <strong class="jxr_keyword">else</strong> {
 <a class="jxr_linenumber" name="L107" href="#L107">107</a>                         <strong class="jxr_keyword">if</strong> (listThrowable != <strong class="jxr_keyword">null</strong>) {
@@ -218,183 +218,183 @@
 <a class="jxr_linenumber" name="L210" href="#L210">210</a>     }
 <a class="jxr_linenumber" name="L211" href="#L211">211</a> 
 <a class="jxr_linenumber" name="L212" href="#L212">212</a>     <em class="jxr_javadoccomment">/**</em>
-<a class="jxr_linenumber" name="L213" href="#L213">213</a> <em class="jxr_javadoccomment">     * Returns a new {@link CompletableFuture} that will be completed in the same way as the given stage. However, in</em>
-<a class="jxr_linenumber" name="L214" href="#L214">214</a> <em class="jxr_javadoccomment">     * case of exceptional completion with a {@link CompletionException}, the returned future will be exceptionally</em>
-<a class="jxr_linenumber" name="L215" href="#L215">215</a> <em class="jxr_javadoccomment">     * completed with the &lt;em&gt;cause&lt;/em&gt; held in the {@link CompletionException}.</em>
-<a class="jxr_linenumber" name="L216" href="#L216">216</a> <em class="jxr_javadoccomment">     *</em>
-<a class="jxr_linenumber" name="L217" href="#L217">217</a> <em class="jxr_javadoccomment">     * @param completionStage the completion stage that may be completed with a {@link CompletionException}</em>
-<a class="jxr_linenumber" name="L218" href="#L218">218</a> <em class="jxr_javadoccomment">     * @param &lt;T&gt; the type of result of the completion stage</em>
-<a class="jxr_linenumber" name="L219" href="#L219">219</a> <em class="jxr_javadoccomment">     * @return the new future</em>
+<a class="jxr_linenumber" name="L213" href="#L213">213</a> <em class="jxr_javadoccomment">     * Returns a {@link CompletionException} containing the given {@link Throwable} as cause, unless the given</em>
+<a class="jxr_linenumber" name="L214" href="#L214">214</a> <em class="jxr_javadoccomment">     * {@link Throwable} is a {@link CompletionException}, in which case it itself is returned.</em>
+<a class="jxr_linenumber" name="L215" href="#L215">215</a> <em class="jxr_javadoccomment">     *</em>
+<a class="jxr_linenumber" name="L216" href="#L216">216</a> <em class="jxr_javadoccomment">     * &lt;p&gt;This function exists to match the behavior of {@link CompletableFuture}.</em>
+<a class="jxr_linenumber" name="L217" href="#L217">217</a> <em class="jxr_javadoccomment">     *</em>
+<a class="jxr_linenumber" name="L218" href="#L218">218</a> <em class="jxr_javadoccomment">     * @param throwable the exception or error</em>
+<a class="jxr_linenumber" name="L219" href="#L219">219</a> <em class="jxr_javadoccomment">     * @return the completion exception</em>
 <a class="jxr_linenumber" name="L220" href="#L220">220</a> <em class="jxr_javadoccomment">     */</em>
-<a class="jxr_linenumber" name="L221" href="#L221">221</a>     <strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">static</strong> &lt;T&gt; CompletableFuture&lt;T&gt; unwrapCompletionException(CompletionStage&lt;T&gt; completionStage) {
-<a class="jxr_linenumber" name="L222" href="#L222">222</a>         CompletableFuture&lt;T&gt; future = <strong class="jxr_keyword">new</strong> CompletableFuture&lt;&gt;();
-<a class="jxr_linenumber" name="L223" href="#L223">223</a>         completionStage.whenComplete((value, failure) -&gt; {
-<a class="jxr_linenumber" name="L224" href="#L224">224</a>             <strong class="jxr_keyword">if</strong> (failure instanceof CompletionException) {
-<a class="jxr_linenumber" name="L225" href="#L225">225</a>                 @Nullable Throwable cause = failure.getCause();
-<a class="jxr_linenumber" name="L226" href="#L226">226</a>                 <strong class="jxr_keyword">if</strong> (cause != <strong class="jxr_keyword">null</strong>) {
-<a class="jxr_linenumber" name="L227" href="#L227">227</a>                     future.completeExceptionally(cause);
-<a class="jxr_linenumber" name="L228" href="#L228">228</a>                 } <strong class="jxr_keyword">else</strong> {
-<a class="jxr_linenumber" name="L229" href="#L229">229</a>                     future.completeExceptionally(failure);
-<a class="jxr_linenumber" name="L230" href="#L230">230</a>                 }
-<a class="jxr_linenumber" name="L231" href="#L231">231</a>             } <strong class="jxr_keyword">else</strong> <strong class="jxr_keyword">if</strong> (failure != <strong class="jxr_keyword">null</strong>) {
-<a class="jxr_linenumber" name="L232" href="#L232">232</a>                 future.completeExceptionally(failure);
-<a class="jxr_linenumber" name="L233" href="#L233">233</a>             } <strong class="jxr_keyword">else</strong> {
-<a class="jxr_linenumber" name="L234" href="#L234">234</a>                 future.complete(value);
-<a class="jxr_linenumber" name="L235" href="#L235">235</a>             }
-<a class="jxr_linenumber" name="L236" href="#L236">236</a>         });
-<a class="jxr_linenumber" name="L237" href="#L237">237</a>         <strong class="jxr_keyword">return</strong> future;
-<a class="jxr_linenumber" name="L238" href="#L238">238</a>     }
-<a class="jxr_linenumber" name="L239" href="#L239">239</a> 
-<a class="jxr_linenumber" name="L240" href="#L240">240</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">final</strong> <strong class="jxr_keyword">class</strong> <a href="../../../../net/florianschoppmann/java/futures/Futures.html">WrappedException</a> <strong class="jxr_keyword">extends</strong> RuntimeException {
-<a class="jxr_linenumber" name="L241" href="#L241">241</a>         <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">final</strong> <strong class="jxr_keyword">long</strong> serialVersionUID = -3891858012985643515L;
-<a class="jxr_linenumber" name="L242" href="#L242">242</a> 
-<a class="jxr_linenumber" name="L243" href="#L243">243</a>         <em class="jxr_javadoccomment">/**</em>
-<a class="jxr_linenumber" name="L244" href="#L244">244</a> <em class="jxr_javadoccomment">         * Constructs a new wrapped exception with the specified cause.</em>
-<a class="jxr_linenumber" name="L245" href="#L245">245</a> <em class="jxr_javadoccomment">         *</em>
-<a class="jxr_linenumber" name="L246" href="#L246">246</a> <em class="jxr_javadoccomment">         * @param cause the cause (which is saved for later retrieval by the {@link #getCause()} method)</em>
-<a class="jxr_linenumber" name="L247" href="#L247">247</a> <em class="jxr_javadoccomment">         */</em>
-<a class="jxr_linenumber" name="L248" href="#L248">248</a>         <strong class="jxr_keyword">private</strong> <a href="../../../../net/florianschoppmann/java/futures/Futures.html">WrappedException</a>(Throwable cause) {
-<a class="jxr_linenumber" name="L249" href="#L249">249</a>             <strong class="jxr_keyword">super</strong>(cause);
-<a class="jxr_linenumber" name="L250" href="#L250">250</a>         }
-<a class="jxr_linenumber" name="L251" href="#L251">251</a>     }
-<a class="jxr_linenumber" name="L252" href="#L252">252</a> 
-<a class="jxr_linenumber" name="L253" href="#L253">253</a>     <em class="jxr_javadoccomment">/**</em>
-<a class="jxr_linenumber" name="L254" href="#L254">254</a> <em class="jxr_javadoccomment">     * Returns a new {@link CompletableFuture} that, when the given stage completes normally, is executed with that</em>
-<a class="jxr_linenumber" name="L255" href="#L255">255</a> <em class="jxr_javadoccomment">     * stage's result as the argument to the supplied function. See the {@link CompletionStage} documentation for rules</em>
-<a class="jxr_linenumber" name="L256" href="#L256">256</a> <em class="jxr_javadoccomment">     * covering exceptional completion.</em>
-<a class="jxr_linenumber" name="L257" href="#L257">257</a> <em class="jxr_javadoccomment">     *</em>
-<a class="jxr_linenumber" name="L258" href="#L258">258</a> <em class="jxr_javadoccomment">     * &lt;p&gt;If {@code function} was a {@link Function} instance identical to {@code checkedFunction}, except for not</em>
-<a class="jxr_linenumber" name="L259" href="#L259">259</a> <em class="jxr_javadoccomment">     * throwing checked exceptions, then this method is equivalent to {@code completionStage.thenApply(function)}.</em>
-<a class="jxr_linenumber" name="L260" href="#L260">260</a> <em class="jxr_javadoccomment">     *</em>
-<a class="jxr_linenumber" name="L261" href="#L261">261</a> <em class="jxr_javadoccomment">     * @param completionStage the completion stage providing the result for the given function</em>
-<a class="jxr_linenumber" name="L262" href="#L262">262</a> <em class="jxr_javadoccomment">     * @param checkedFunction the function to use to compute the value of the returned {@link CompletableFuture}</em>
-<a class="jxr_linenumber" name="L263" href="#L263">263</a> <em class="jxr_javadoccomment">     * @param &lt;T&gt; the function's argument type</em>
-<a class="jxr_linenumber" name="L264" href="#L264">264</a> <em class="jxr_javadoccomment">     * @param &lt;U&gt; the function's return type</em>
-<a class="jxr_linenumber" name="L265" href="#L265">265</a> <em class="jxr_javadoccomment">     * @return the new future</em>
-<a class="jxr_linenumber" name="L266" href="#L266">266</a> <em class="jxr_javadoccomment">     */</em>
-<a class="jxr_linenumber" name="L267" href="#L267">267</a>     <strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">static</strong> &lt;T, U&gt; CompletableFuture&lt;U&gt; thenApply(CompletionStage&lt;T&gt; completionStage,
-<a class="jxr_linenumber" name="L268" href="#L268">268</a>             CheckedFunction&lt;? <strong class="jxr_keyword">super</strong> T, ? <strong class="jxr_keyword">extends</strong> U&gt; checkedFunction) {
-<a class="jxr_linenumber" name="L269" href="#L269">269</a>         <em class="jxr_comment">// Oddly, javac 1.8.0_73 fails with the type inference, so we need to do an explicit cast.</em>
-<a class="jxr_linenumber" name="L270" href="#L270">270</a>         <strong class="jxr_keyword">return</strong> thenApplyInternal(
-<a class="jxr_linenumber" name="L271" href="#L271">271</a>             (Function&lt;BiConsumer&lt;? <strong class="jxr_keyword">super</strong> T, ? <strong class="jxr_keyword">super</strong> Throwable&gt;, CompletionStage&lt;T&gt;&gt;) completionStage::whenComplete,
-<a class="jxr_linenumber" name="L272" href="#L272">272</a>             checkedFunction
-<a class="jxr_linenumber" name="L273" href="#L273">273</a>         );
-<a class="jxr_linenumber" name="L274" href="#L274">274</a>     }
-<a class="jxr_linenumber" name="L275" href="#L275">275</a> 
-<a class="jxr_linenumber" name="L276" href="#L276">276</a>     <em class="jxr_javadoccomment">/**</em>
-<a class="jxr_linenumber" name="L277" href="#L277">277</a> <em class="jxr_javadoccomment">     * Returns a new {@link CompletableFuture} that, when the given stage completes normally, is executed using the</em>
-<a class="jxr_linenumber" name="L278" href="#L278">278</a> <em class="jxr_javadoccomment">     * supplied Executor, with the given stage's result as the argument to the supplied function. See the</em>
-<a class="jxr_linenumber" name="L279" href="#L279">279</a> <em class="jxr_javadoccomment">     * {@link CompletionStage} documentation for rules covering exceptional completion.</em>
-<a class="jxr_linenumber" name="L280" href="#L280">280</a> <em class="jxr_javadoccomment">     *</em>
-<a class="jxr_linenumber" name="L281" href="#L281">281</a> <em class="jxr_javadoccomment">     * &lt;p&gt;If {@code function} was a {@link Function} instance identical to {@code checkedFunction}, except for not</em>
-<a class="jxr_linenumber" name="L282" href="#L282">282</a> <em class="jxr_javadoccomment">     * throwing checked exceptions, then this method is equivalent to</em>
-<a class="jxr_linenumber" name="L283" href="#L283">283</a> <em class="jxr_javadoccomment">     * {@code completionStage.thenApplyAsync(function, executor)}.</em>
-<a class="jxr_linenumber" name="L284" href="#L284">284</a> <em class="jxr_javadoccomment">     *</em>
-<a class="jxr_linenumber" name="L285" href="#L285">285</a> <em class="jxr_javadoccomment">     * @param completionStage the completion stage providing the result for the given function</em>
-<a class="jxr_linenumber" name="L286" href="#L286">286</a> <em class="jxr_javadoccomment">     * @param checkedFunction the function to use to compute the value of the returned {@link CompletableFuture}</em>
-<a class="jxr_linenumber" name="L287" href="#L287">287</a> <em class="jxr_javadoccomment">     * @param executor the executor to use for asynchronous execution</em>
-<a class="jxr_linenumber" name="L288" href="#L288">288</a> <em class="jxr_javadoccomment">     * @param &lt;T&gt; the function's argument type</em>
-<a class="jxr_linenumber" name="L289" href="#L289">289</a> <em class="jxr_javadoccomment">     * @param &lt;U&gt; the function's return type</em>
-<a class="jxr_linenumber" name="L290" href="#L290">290</a> <em class="jxr_javadoccomment">     * @return the new future</em>
-<a class="jxr_linenumber" name="L291" href="#L291">291</a> <em class="jxr_javadoccomment">     */</em>
-<a class="jxr_linenumber" name="L292" href="#L292">292</a>     <strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">static</strong> &lt;T, U&gt; CompletableFuture&lt;U&gt; thenApplyAsync(CompletionStage&lt;T&gt; completionStage,
-<a class="jxr_linenumber" name="L293" href="#L293">293</a>             CheckedFunction&lt;? <strong class="jxr_keyword">super</strong> T, ? <strong class="jxr_keyword">extends</strong> U&gt; checkedFunction, Executor executor) {
-<a class="jxr_linenumber" name="L294" href="#L294">294</a>         <strong class="jxr_keyword">return</strong> thenApplyInternal(action -&gt; completionStage.whenCompleteAsync(action, executor), checkedFunction);
-<a class="jxr_linenumber" name="L295" href="#L295">295</a>     }
-<a class="jxr_linenumber" name="L296" href="#L296">296</a> 
-<a class="jxr_linenumber" name="L297" href="#L297">297</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> &lt;T, U&gt; CompletableFuture&lt;U&gt; thenApplyInternal(
-<a class="jxr_linenumber" name="L298" href="#L298">298</a>             Function&lt;BiConsumer&lt;? <strong class="jxr_keyword">super</strong> T, ? <strong class="jxr_keyword">super</strong> Throwable&gt;, CompletionStage&lt;T&gt;&gt; whenCompleteFunction,
-<a class="jxr_linenumber" name="L299" href="#L299">299</a>             CheckedFunction&lt;? <strong class="jxr_keyword">super</strong> T, ? <strong class="jxr_keyword">extends</strong> U&gt; checkedFunction) {
-<a class="jxr_linenumber" name="L300" href="#L300">300</a>         <strong class="jxr_keyword">return</strong> transformCompletionStage(
-<a class="jxr_linenumber" name="L301" href="#L301">301</a>             whenCompleteFunction,
-<a class="jxr_linenumber" name="L302" href="#L302">302</a>             (result, failure, future) -&gt; {
-<a class="jxr_linenumber" name="L303" href="#L303">303</a>                 <strong class="jxr_keyword">if</strong> (failure == <strong class="jxr_keyword">null</strong>) {
-<a class="jxr_linenumber" name="L304" href="#L304">304</a>                     <strong class="jxr_keyword">try</strong> {
-<a class="jxr_linenumber" name="L305" href="#L305">305</a>                         future.complete(checkedFunction.checkedApply(result));
-<a class="jxr_linenumber" name="L306" href="#L306">306</a>                     } <strong class="jxr_keyword">catch</strong> (Exception exception) {
-<a class="jxr_linenumber" name="L307" href="#L307">307</a>                         <strong class="jxr_keyword">throw</strong> <strong class="jxr_keyword">new</strong> <a href="../../../../net/florianschoppmann/java/futures/Futures.html">WrappedException</a>(exception);
-<a class="jxr_linenumber" name="L308" href="#L308">308</a>                     }
-<a class="jxr_linenumber" name="L309" href="#L309">309</a>                 }
-<a class="jxr_linenumber" name="L310" href="#L310">310</a>             }
-<a class="jxr_linenumber" name="L311" href="#L311">311</a>         );
-<a class="jxr_linenumber" name="L312" href="#L312">312</a>     }
-<a class="jxr_linenumber" name="L313" href="#L313">313</a> 
-<a class="jxr_linenumber" name="L314" href="#L314">314</a>     <em class="jxr_javadoccomment">/**</em>
-<a class="jxr_linenumber" name="L315" href="#L315">315</a> <em class="jxr_javadoccomment">     * Returns a new {@link CompletableFuture} that, when the given stage completes normally, is executed with that</em>
-<a class="jxr_linenumber" name="L316" href="#L316">316</a> <em class="jxr_javadoccomment">     * stage as the argument to the supplied function. See the {@link CompletionStage} documentation for rules covering</em>
-<a class="jxr_linenumber" name="L317" href="#L317">317</a> <em class="jxr_javadoccomment">     * exceptional completion.</em>
+<a class="jxr_linenumber" name="L221" href="#L221">221</a>     <strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">static</strong> CompletionException wrapInCompletionException(Throwable throwable) {
+<a class="jxr_linenumber" name="L222" href="#L222">222</a>         <strong class="jxr_keyword">return</strong> throwable instanceof CompletionException
+<a class="jxr_linenumber" name="L223" href="#L223">223</a>             ? (CompletionException) throwable
+<a class="jxr_linenumber" name="L224" href="#L224">224</a>             : <strong class="jxr_keyword">new</strong> CompletionException(throwable);
+<a class="jxr_linenumber" name="L225" href="#L225">225</a>     }
+<a class="jxr_linenumber" name="L226" href="#L226">226</a> 
+<a class="jxr_linenumber" name="L227" href="#L227">227</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L228" href="#L228">228</a> <em class="jxr_javadoccomment">     * If the given {@link Throwable} is a {@link CompletionException} with cause, returns this. Otherwise, returns the</em>
+<a class="jxr_linenumber" name="L229" href="#L229">229</a> <em class="jxr_javadoccomment">     * given throwable.</em>
+<a class="jxr_linenumber" name="L230" href="#L230">230</a> <em class="jxr_javadoccomment">     *</em>
+<a class="jxr_linenumber" name="L231" href="#L231">231</a> <em class="jxr_javadoccomment">     * &lt;p&gt;See also {@link #wrapInCompletionException(Throwable)}.</em>
+<a class="jxr_linenumber" name="L232" href="#L232">232</a> <em class="jxr_javadoccomment">     *</em>
+<a class="jxr_linenumber" name="L233" href="#L233">233</a> <em class="jxr_javadoccomment">     * @param throwable the exception or error</em>
+<a class="jxr_linenumber" name="L234" href="#L234">234</a> <em class="jxr_javadoccomment">     * @return the cause</em>
+<a class="jxr_linenumber" name="L235" href="#L235">235</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L236" href="#L236">236</a>     <strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">static</strong> Throwable unwrapCompletionException(Throwable throwable) {
+<a class="jxr_linenumber" name="L237" href="#L237">237</a>         <strong class="jxr_keyword">if</strong> (throwable instanceof CompletionException) {
+<a class="jxr_linenumber" name="L238" href="#L238">238</a>             @Nullable Throwable cause = throwable.getCause();
+<a class="jxr_linenumber" name="L239" href="#L239">239</a>             <strong class="jxr_keyword">if</strong> (cause != <strong class="jxr_keyword">null</strong>) {
+<a class="jxr_linenumber" name="L240" href="#L240">240</a>                 <strong class="jxr_keyword">return</strong> cause;
+<a class="jxr_linenumber" name="L241" href="#L241">241</a>             }
+<a class="jxr_linenumber" name="L242" href="#L242">242</a>         }
+<a class="jxr_linenumber" name="L243" href="#L243">243</a>         <strong class="jxr_keyword">return</strong> throwable;
+<a class="jxr_linenumber" name="L244" href="#L244">244</a>     }
+<a class="jxr_linenumber" name="L245" href="#L245">245</a> 
+<a class="jxr_linenumber" name="L246" href="#L246">246</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L247" href="#L247">247</a> <em class="jxr_javadoccomment">     * Returns a new {@link CompletableFuture} that will be completed in the same way as the given stage. However, in</em>
+<a class="jxr_linenumber" name="L248" href="#L248">248</a> <em class="jxr_javadoccomment">     * case of exceptional completion with a {@link CompletionException}, the returned future will be exceptionally</em>
+<a class="jxr_linenumber" name="L249" href="#L249">249</a> <em class="jxr_javadoccomment">     * completed with the &lt;em&gt;cause&lt;/em&gt; held in the {@link CompletionException}.</em>
+<a class="jxr_linenumber" name="L250" href="#L250">250</a> <em class="jxr_javadoccomment">     *</em>
+<a class="jxr_linenumber" name="L251" href="#L251">251</a> <em class="jxr_javadoccomment">     * @param completionStage the completion stage that may be completed with a {@link CompletionException}</em>
+<a class="jxr_linenumber" name="L252" href="#L252">252</a> <em class="jxr_javadoccomment">     * @param &lt;T&gt; the type of result of the completion stage</em>
+<a class="jxr_linenumber" name="L253" href="#L253">253</a> <em class="jxr_javadoccomment">     * @return the new future</em>
+<a class="jxr_linenumber" name="L254" href="#L254">254</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L255" href="#L255">255</a>     <strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">static</strong> &lt;T&gt; CompletableFuture&lt;T&gt; unwrapCompletionException(CompletionStage&lt;T&gt; completionStage) {
+<a class="jxr_linenumber" name="L256" href="#L256">256</a>         CompletableFuture&lt;T&gt; future = <strong class="jxr_keyword">new</strong> CompletableFuture&lt;&gt;();
+<a class="jxr_linenumber" name="L257" href="#L257">257</a>         completionStage.whenComplete((value, failure) -&gt; {
+<a class="jxr_linenumber" name="L258" href="#L258">258</a>             <strong class="jxr_keyword">if</strong> (failure instanceof CompletionException) {
+<a class="jxr_linenumber" name="L259" href="#L259">259</a>                 @Nullable Throwable cause = failure.getCause();
+<a class="jxr_linenumber" name="L260" href="#L260">260</a>                 <strong class="jxr_keyword">if</strong> (cause != <strong class="jxr_keyword">null</strong>) {
+<a class="jxr_linenumber" name="L261" href="#L261">261</a>                     future.completeExceptionally(cause);
+<a class="jxr_linenumber" name="L262" href="#L262">262</a>                 } <strong class="jxr_keyword">else</strong> {
+<a class="jxr_linenumber" name="L263" href="#L263">263</a>                     future.completeExceptionally(failure);
+<a class="jxr_linenumber" name="L264" href="#L264">264</a>                 }
+<a class="jxr_linenumber" name="L265" href="#L265">265</a>             } <strong class="jxr_keyword">else</strong> <strong class="jxr_keyword">if</strong> (failure != <strong class="jxr_keyword">null</strong>) {
+<a class="jxr_linenumber" name="L266" href="#L266">266</a>                 future.completeExceptionally(failure);
+<a class="jxr_linenumber" name="L267" href="#L267">267</a>             } <strong class="jxr_keyword">else</strong> {
+<a class="jxr_linenumber" name="L268" href="#L268">268</a>                 future.complete(value);
+<a class="jxr_linenumber" name="L269" href="#L269">269</a>             }
+<a class="jxr_linenumber" name="L270" href="#L270">270</a>         });
+<a class="jxr_linenumber" name="L271" href="#L271">271</a>         <strong class="jxr_keyword">return</strong> future;
+<a class="jxr_linenumber" name="L272" href="#L272">272</a>     }
+<a class="jxr_linenumber" name="L273" href="#L273">273</a> 
+<a class="jxr_linenumber" name="L274" href="#L274">274</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">final</strong> <strong class="jxr_keyword">class</strong> <a href="../../../../net/florianschoppmann/java/futures/Futures.html">WrappedException</a> <strong class="jxr_keyword">extends</strong> RuntimeException {
+<a class="jxr_linenumber" name="L275" href="#L275">275</a>         <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> <strong class="jxr_keyword">final</strong> <strong class="jxr_keyword">long</strong> serialVersionUID = -3891858012985643515L;
+<a class="jxr_linenumber" name="L276" href="#L276">276</a> 
+<a class="jxr_linenumber" name="L277" href="#L277">277</a>         <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L278" href="#L278">278</a> <em class="jxr_javadoccomment">         * Constructs a new wrapped exception with the specified cause.</em>
+<a class="jxr_linenumber" name="L279" href="#L279">279</a> <em class="jxr_javadoccomment">         *</em>
+<a class="jxr_linenumber" name="L280" href="#L280">280</a> <em class="jxr_javadoccomment">         * @param cause the cause (which is saved for later retrieval by the {@link #getCause()} method)</em>
+<a class="jxr_linenumber" name="L281" href="#L281">281</a> <em class="jxr_javadoccomment">         */</em>
+<a class="jxr_linenumber" name="L282" href="#L282">282</a>         <strong class="jxr_keyword">private</strong> <a href="../../../../net/florianschoppmann/java/futures/Futures.html">WrappedException</a>(Throwable cause) {
+<a class="jxr_linenumber" name="L283" href="#L283">283</a>             <strong class="jxr_keyword">super</strong>(cause);
+<a class="jxr_linenumber" name="L284" href="#L284">284</a>         }
+<a class="jxr_linenumber" name="L285" href="#L285">285</a>     }
+<a class="jxr_linenumber" name="L286" href="#L286">286</a> 
+<a class="jxr_linenumber" name="L287" href="#L287">287</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L288" href="#L288">288</a> <em class="jxr_javadoccomment">     * Returns a new {@link CompletableFuture} that, when the given stage completes normally, is executed with that</em>
+<a class="jxr_linenumber" name="L289" href="#L289">289</a> <em class="jxr_javadoccomment">     * stage's result as the argument to the supplied function. See the {@link CompletionStage} documentation for rules</em>
+<a class="jxr_linenumber" name="L290" href="#L290">290</a> <em class="jxr_javadoccomment">     * covering exceptional completion.</em>
+<a class="jxr_linenumber" name="L291" href="#L291">291</a> <em class="jxr_javadoccomment">     *</em>
+<a class="jxr_linenumber" name="L292" href="#L292">292</a> <em class="jxr_javadoccomment">     * &lt;p&gt;If {@code function} was a {@link Function} instance identical to {@code checkedFunction}, except for not</em>
+<a class="jxr_linenumber" name="L293" href="#L293">293</a> <em class="jxr_javadoccomment">     * throwing checked exceptions, then this method is equivalent to {@code completionStage.thenApply(function)}.</em>
+<a class="jxr_linenumber" name="L294" href="#L294">294</a> <em class="jxr_javadoccomment">     *</em>
+<a class="jxr_linenumber" name="L295" href="#L295">295</a> <em class="jxr_javadoccomment">     * @param completionStage the completion stage providing the result for the given function</em>
+<a class="jxr_linenumber" name="L296" href="#L296">296</a> <em class="jxr_javadoccomment">     * @param checkedFunction the function to use to compute the value of the returned {@link CompletableFuture}</em>
+<a class="jxr_linenumber" name="L297" href="#L297">297</a> <em class="jxr_javadoccomment">     * @param &lt;T&gt; the function's argument type</em>
+<a class="jxr_linenumber" name="L298" href="#L298">298</a> <em class="jxr_javadoccomment">     * @param &lt;U&gt; the function's return type</em>
+<a class="jxr_linenumber" name="L299" href="#L299">299</a> <em class="jxr_javadoccomment">     * @return the new future</em>
+<a class="jxr_linenumber" name="L300" href="#L300">300</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L301" href="#L301">301</a>     <strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">static</strong> &lt;T, U&gt; CompletableFuture&lt;U&gt; thenApply(CompletionStage&lt;T&gt; completionStage,
+<a class="jxr_linenumber" name="L302" href="#L302">302</a>             CheckedFunction&lt;? <strong class="jxr_keyword">super</strong> T, ? <strong class="jxr_keyword">extends</strong> U&gt; checkedFunction) {
+<a class="jxr_linenumber" name="L303" href="#L303">303</a>         <em class="jxr_comment">// Oddly, javac 1.8.0_73 fails with the type inference, so we need to do an explicit cast.</em>
+<a class="jxr_linenumber" name="L304" href="#L304">304</a>         <strong class="jxr_keyword">return</strong> thenApplyInternal(
+<a class="jxr_linenumber" name="L305" href="#L305">305</a>             (Function&lt;BiConsumer&lt;? <strong class="jxr_keyword">super</strong> T, ? <strong class="jxr_keyword">super</strong> Throwable&gt;, CompletionStage&lt;T&gt;&gt;) completionStage::whenComplete,
+<a class="jxr_linenumber" name="L306" href="#L306">306</a>             checkedFunction
+<a class="jxr_linenumber" name="L307" href="#L307">307</a>         );
+<a class="jxr_linenumber" name="L308" href="#L308">308</a>     }
+<a class="jxr_linenumber" name="L309" href="#L309">309</a> 
+<a class="jxr_linenumber" name="L310" href="#L310">310</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L311" href="#L311">311</a> <em class="jxr_javadoccomment">     * Returns a new {@link CompletableFuture} that, when the given stage completes normally, is executed using the</em>
+<a class="jxr_linenumber" name="L312" href="#L312">312</a> <em class="jxr_javadoccomment">     * supplied Executor, with the given stage's result as the argument to the supplied function. See the</em>
+<a class="jxr_linenumber" name="L313" href="#L313">313</a> <em class="jxr_javadoccomment">     * {@link CompletionStage} documentation for rules covering exceptional completion.</em>
+<a class="jxr_linenumber" name="L314" href="#L314">314</a> <em class="jxr_javadoccomment">     *</em>
+<a class="jxr_linenumber" name="L315" href="#L315">315</a> <em class="jxr_javadoccomment">     * &lt;p&gt;If {@code function} was a {@link Function} instance identical to {@code checkedFunction}, except for not</em>
+<a class="jxr_linenumber" name="L316" href="#L316">316</a> <em class="jxr_javadoccomment">     * throwing checked exceptions, then this method is equivalent to</em>
+<a class="jxr_linenumber" name="L317" href="#L317">317</a> <em class="jxr_javadoccomment">     * {@code completionStage.thenApplyAsync(function, executor)}.</em>
 <a class="jxr_linenumber" name="L318" href="#L318">318</a> <em class="jxr_javadoccomment">     *</em>
-<a class="jxr_linenumber" name="L319" href="#L319">319</a> <em class="jxr_javadoccomment">     * &lt;p&gt;If {@code function} was a {@link Function} instance identical to {@code checkedFunction}, except for not</em>
-<a class="jxr_linenumber" name="L320" href="#L320">320</a> <em class="jxr_javadoccomment">     * throwing checked exceptions, then this method is equivalent to {@code completionStage.thenCompose(function)}.</em>
-<a class="jxr_linenumber" name="L321" href="#L321">321</a> <em class="jxr_javadoccomment">     *</em>
-<a class="jxr_linenumber" name="L322" href="#L322">322</a> <em class="jxr_javadoccomment">     * @param completionStage the completion stage providing the result for the given function</em>
-<a class="jxr_linenumber" name="L323" href="#L323">323</a> <em class="jxr_javadoccomment">     * @param checkedFunction the function returning a new {@link CompletionStage}</em>
-<a class="jxr_linenumber" name="L324" href="#L324">324</a> <em class="jxr_javadoccomment">     * @param &lt;T&gt; the function's argument type</em>
-<a class="jxr_linenumber" name="L325" href="#L325">325</a> <em class="jxr_javadoccomment">     * @param &lt;U&gt; the type of the returned {@link CompletionStage}'s result</em>
-<a class="jxr_linenumber" name="L326" href="#L326">326</a> <em class="jxr_javadoccomment">     * @return the new future</em>
-<a class="jxr_linenumber" name="L327" href="#L327">327</a> <em class="jxr_javadoccomment">     */</em>
-<a class="jxr_linenumber" name="L328" href="#L328">328</a>     <strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">static</strong> &lt;T, U&gt; CompletableFuture&lt;U&gt; thenCompose(CompletionStage&lt;T&gt; completionStage,
-<a class="jxr_linenumber" name="L329" href="#L329">329</a>             CheckedFunction&lt;? <strong class="jxr_keyword">super</strong> T, ? <strong class="jxr_keyword">extends</strong> CompletionStage&lt;U&gt;&gt; checkedFunction) {
-<a class="jxr_linenumber" name="L330" href="#L330">330</a>         <em class="jxr_comment">// Oddly, javac 1.8.0_73 fails with the type inference, so we need to do an explicit cast.</em>
-<a class="jxr_linenumber" name="L331" href="#L331">331</a>         <strong class="jxr_keyword">return</strong> thenComposeInternal(
-<a class="jxr_linenumber" name="L332" href="#L332">332</a>             (Function&lt;BiConsumer&lt;? <strong class="jxr_keyword">super</strong> T, ? <strong class="jxr_keyword">super</strong> Throwable&gt;, CompletionStage&lt;T&gt;&gt;) completionStage::whenComplete,
-<a class="jxr_linenumber" name="L333" href="#L333">333</a>             checkedFunction
-<a class="jxr_linenumber" name="L334" href="#L334">334</a>         );
-<a class="jxr_linenumber" name="L335" href="#L335">335</a>     }
-<a class="jxr_linenumber" name="L336" href="#L336">336</a> 
-<a class="jxr_linenumber" name="L337" href="#L337">337</a>     <em class="jxr_javadoccomment">/**</em>
-<a class="jxr_linenumber" name="L338" href="#L338">338</a> <em class="jxr_javadoccomment">     * Returns a new {@link CompletableFuture} that, when the given stage completes normally, is executed using the</em>
-<a class="jxr_linenumber" name="L339" href="#L339">339</a> <em class="jxr_javadoccomment">     * supplied {@link Executor}, with the given stage's result as the argument to the supplied function. See the</em>
-<a class="jxr_linenumber" name="L340" href="#L340">340</a> <em class="jxr_javadoccomment">     * {@link CompletionStage} documentation for rules covering exceptional completion.</em>
-<a class="jxr_linenumber" name="L341" href="#L341">341</a> <em class="jxr_javadoccomment">     *</em>
-<a class="jxr_linenumber" name="L342" href="#L342">342</a> <em class="jxr_javadoccomment">     * &lt;p&gt;If {@code function} was a {@link Function} instance identical to {@code checkedFunction}, except for not</em>
-<a class="jxr_linenumber" name="L343" href="#L343">343</a> <em class="jxr_javadoccomment">     * throwing checked exceptions, then this method is equivalent to</em>
-<a class="jxr_linenumber" name="L344" href="#L344">344</a> <em class="jxr_javadoccomment">     * {@code completionStage.thenComposeAsync(function, executor)}.</em>
-<a class="jxr_linenumber" name="L345" href="#L345">345</a> <em class="jxr_javadoccomment">     *</em>
-<a class="jxr_linenumber" name="L346" href="#L346">346</a> <em class="jxr_javadoccomment">     * @param completionStage the completion stage providing the result for the given function</em>
-<a class="jxr_linenumber" name="L347" href="#L347">347</a> <em class="jxr_javadoccomment">     * @param checkedFunction the function returning a new {@link CompletionStage}</em>
-<a class="jxr_linenumber" name="L348" href="#L348">348</a> <em class="jxr_javadoccomment">     * @param executor the executor to use for asynchronous execution</em>
-<a class="jxr_linenumber" name="L349" href="#L349">349</a> <em class="jxr_javadoccomment">     * @param &lt;T&gt; the function's argument type</em>
-<a class="jxr_linenumber" name="L350" href="#L350">350</a> <em class="jxr_javadoccomment">     * @param &lt;U&gt; the type of the returned {@link CompletionStage}'s result</em>
-<a class="jxr_linenumber" name="L351" href="#L351">351</a> <em class="jxr_javadoccomment">     * @return the new future</em>
-<a class="jxr_linenumber" name="L352" href="#L352">352</a> <em class="jxr_javadoccomment">     */</em>
-<a class="jxr_linenumber" name="L353" href="#L353">353</a>     <strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">static</strong> &lt;T, U&gt; CompletableFuture&lt;U&gt; thenComposeAsync(CompletionStage&lt;T&gt; completionStage,
-<a class="jxr_linenumber" name="L354" href="#L354">354</a>             CheckedFunction&lt;? <strong class="jxr_keyword">super</strong> T, ? <strong class="jxr_keyword">extends</strong> CompletionStage&lt;U&gt;&gt; checkedFunction, Executor executor) {
-<a class="jxr_linenumber" name="L355" href="#L355">355</a>         <strong class="jxr_keyword">return</strong> thenComposeInternal(action -&gt; completionStage.whenCompleteAsync(action, executor), checkedFunction);
-<a class="jxr_linenumber" name="L356" href="#L356">356</a>     }
-<a class="jxr_linenumber" name="L357" href="#L357">357</a> 
-<a class="jxr_linenumber" name="L358" href="#L358">358</a>     <em class="jxr_javadoccomment">/**</em>
-<a class="jxr_linenumber" name="L359" href="#L359">359</a> <em class="jxr_javadoccomment">     * Returns a {@link CompletionException} containing the given {@link Throwable} as cause, unless the given</em>
-<a class="jxr_linenumber" name="L360" href="#L360">360</a> <em class="jxr_javadoccomment">     * {@link Throwable} is a {@link CompletionException}, in which case it itself is returned.</em>
-<a class="jxr_linenumber" name="L361" href="#L361">361</a> <em class="jxr_javadoccomment">     *</em>
-<a class="jxr_linenumber" name="L362" href="#L362">362</a> <em class="jxr_javadoccomment">     * &lt;p&gt;This function exists to match the behavior of {@link CompletableFuture}.</em>
-<a class="jxr_linenumber" name="L363" href="#L363">363</a> <em class="jxr_javadoccomment">     *</em>
-<a class="jxr_linenumber" name="L364" href="#L364">364</a> <em class="jxr_javadoccomment">     * @param throwable the exception or error</em>
-<a class="jxr_linenumber" name="L365" href="#L365">365</a> <em class="jxr_javadoccomment">     * @return the completion exception</em>
-<a class="jxr_linenumber" name="L366" href="#L366">366</a> <em class="jxr_javadoccomment">     */</em>
-<a class="jxr_linenumber" name="L367" href="#L367">367</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> CompletionException encodeException(Throwable throwable) {
-<a class="jxr_linenumber" name="L368" href="#L368">368</a>         <strong class="jxr_keyword">return</strong> throwable instanceof CompletionException
-<a class="jxr_linenumber" name="L369" href="#L369">369</a>             ? (CompletionException) throwable
-<a class="jxr_linenumber" name="L370" href="#L370">370</a>             : <strong class="jxr_keyword">new</strong> CompletionException(throwable);
-<a class="jxr_linenumber" name="L371" href="#L371">371</a>     }
-<a class="jxr_linenumber" name="L372" href="#L372">372</a> 
-<a class="jxr_linenumber" name="L373" href="#L373">373</a>     <em class="jxr_javadoccomment">/**</em>
-<a class="jxr_linenumber" name="L374" href="#L374">374</a> <em class="jxr_javadoccomment">     * If the given {@link Throwable} is a {@link CompletionException} with cause, returns this. Otherwise, returns the</em>
-<a class="jxr_linenumber" name="L375" href="#L375">375</a> <em class="jxr_javadoccomment">     * given throwable.</em>
-<a class="jxr_linenumber" name="L376" href="#L376">376</a> <em class="jxr_javadoccomment">     *</em>
-<a class="jxr_linenumber" name="L377" href="#L377">377</a> <em class="jxr_javadoccomment">     * &lt;p&gt;See also {@link #encodeException(Throwable)}.</em>
-<a class="jxr_linenumber" name="L378" href="#L378">378</a> <em class="jxr_javadoccomment">     *</em>
-<a class="jxr_linenumber" name="L379" href="#L379">379</a> <em class="jxr_javadoccomment">     * @param throwable the exception or error</em>
-<a class="jxr_linenumber" name="L380" href="#L380">380</a> <em class="jxr_javadoccomment">     * @return the cause</em>
-<a class="jxr_linenumber" name="L381" href="#L381">381</a> <em class="jxr_javadoccomment">     */</em>
-<a class="jxr_linenumber" name="L382" href="#L382">382</a>     <strong class="jxr_keyword">static</strong> Throwable decode(Throwable throwable) {
-<a class="jxr_linenumber" name="L383" href="#L383">383</a>         <strong class="jxr_keyword">if</strong> (throwable instanceof CompletionException) {
-<a class="jxr_linenumber" name="L384" href="#L384">384</a>             @Nullable Throwable cause = throwable.getCause();
-<a class="jxr_linenumber" name="L385" href="#L385">385</a>             <strong class="jxr_keyword">if</strong> (cause != <strong class="jxr_keyword">null</strong>) {
-<a class="jxr_linenumber" name="L386" href="#L386">386</a>                 <strong class="jxr_keyword">return</strong> cause;
-<a class="jxr_linenumber" name="L387" href="#L387">387</a>             }
-<a class="jxr_linenumber" name="L388" href="#L388">388</a>         }
-<a class="jxr_linenumber" name="L389" href="#L389">389</a>         <strong class="jxr_keyword">return</strong> throwable;
+<a class="jxr_linenumber" name="L319" href="#L319">319</a> <em class="jxr_javadoccomment">     * @param completionStage the completion stage providing the result for the given function</em>
+<a class="jxr_linenumber" name="L320" href="#L320">320</a> <em class="jxr_javadoccomment">     * @param checkedFunction the function to use to compute the value of the returned {@link CompletableFuture}</em>
+<a class="jxr_linenumber" name="L321" href="#L321">321</a> <em class="jxr_javadoccomment">     * @param executor the executor to use for asynchronous execution</em>
+<a class="jxr_linenumber" name="L322" href="#L322">322</a> <em class="jxr_javadoccomment">     * @param &lt;T&gt; the function's argument type</em>
+<a class="jxr_linenumber" name="L323" href="#L323">323</a> <em class="jxr_javadoccomment">     * @param &lt;U&gt; the function's return type</em>
+<a class="jxr_linenumber" name="L324" href="#L324">324</a> <em class="jxr_javadoccomment">     * @return the new future</em>
+<a class="jxr_linenumber" name="L325" href="#L325">325</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L326" href="#L326">326</a>     <strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">static</strong> &lt;T, U&gt; CompletableFuture&lt;U&gt; thenApplyAsync(CompletionStage&lt;T&gt; completionStage,
+<a class="jxr_linenumber" name="L327" href="#L327">327</a>             CheckedFunction&lt;? <strong class="jxr_keyword">super</strong> T, ? <strong class="jxr_keyword">extends</strong> U&gt; checkedFunction, Executor executor) {
+<a class="jxr_linenumber" name="L328" href="#L328">328</a>         <strong class="jxr_keyword">return</strong> thenApplyInternal(action -&gt; completionStage.whenCompleteAsync(action, executor), checkedFunction);
+<a class="jxr_linenumber" name="L329" href="#L329">329</a>     }
+<a class="jxr_linenumber" name="L330" href="#L330">330</a> 
+<a class="jxr_linenumber" name="L331" href="#L331">331</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> &lt;T, U&gt; CompletableFuture&lt;U&gt; thenApplyInternal(
+<a class="jxr_linenumber" name="L332" href="#L332">332</a>             Function&lt;BiConsumer&lt;? <strong class="jxr_keyword">super</strong> T, ? <strong class="jxr_keyword">super</strong> Throwable&gt;, CompletionStage&lt;T&gt;&gt; whenCompleteFunction,
+<a class="jxr_linenumber" name="L333" href="#L333">333</a>             CheckedFunction&lt;? <strong class="jxr_keyword">super</strong> T, ? <strong class="jxr_keyword">extends</strong> U&gt; checkedFunction) {
+<a class="jxr_linenumber" name="L334" href="#L334">334</a>         <strong class="jxr_keyword">return</strong> transformCompletionStage(
+<a class="jxr_linenumber" name="L335" href="#L335">335</a>             whenCompleteFunction,
+<a class="jxr_linenumber" name="L336" href="#L336">336</a>             (result, failure, future) -&gt; {
+<a class="jxr_linenumber" name="L337" href="#L337">337</a>                 <strong class="jxr_keyword">if</strong> (failure == <strong class="jxr_keyword">null</strong>) {
+<a class="jxr_linenumber" name="L338" href="#L338">338</a>                     <strong class="jxr_keyword">try</strong> {
+<a class="jxr_linenumber" name="L339" href="#L339">339</a>                         future.complete(checkedFunction.checkedApply(result));
+<a class="jxr_linenumber" name="L340" href="#L340">340</a>                     } <strong class="jxr_keyword">catch</strong> (Exception exception) {
+<a class="jxr_linenumber" name="L341" href="#L341">341</a>                         <strong class="jxr_keyword">throw</strong> <strong class="jxr_keyword">new</strong> <a href="../../../../net/florianschoppmann/java/futures/Futures.html">WrappedException</a>(exception);
+<a class="jxr_linenumber" name="L342" href="#L342">342</a>                     }
+<a class="jxr_linenumber" name="L343" href="#L343">343</a>                 }
+<a class="jxr_linenumber" name="L344" href="#L344">344</a>             }
+<a class="jxr_linenumber" name="L345" href="#L345">345</a>         );
+<a class="jxr_linenumber" name="L346" href="#L346">346</a>     }
+<a class="jxr_linenumber" name="L347" href="#L347">347</a> 
+<a class="jxr_linenumber" name="L348" href="#L348">348</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L349" href="#L349">349</a> <em class="jxr_javadoccomment">     * Returns a new {@link CompletableFuture} that, when the given stage completes normally, is executed with that</em>
+<a class="jxr_linenumber" name="L350" href="#L350">350</a> <em class="jxr_javadoccomment">     * stage as the argument to the supplied function. See the {@link CompletionStage} documentation for rules covering</em>
+<a class="jxr_linenumber" name="L351" href="#L351">351</a> <em class="jxr_javadoccomment">     * exceptional completion.</em>
+<a class="jxr_linenumber" name="L352" href="#L352">352</a> <em class="jxr_javadoccomment">     *</em>
+<a class="jxr_linenumber" name="L353" href="#L353">353</a> <em class="jxr_javadoccomment">     * &lt;p&gt;If {@code function} was a {@link Function} instance identical to {@code checkedFunction}, except for not</em>
+<a class="jxr_linenumber" name="L354" href="#L354">354</a> <em class="jxr_javadoccomment">     * throwing checked exceptions, then this method is equivalent to {@code completionStage.thenCompose(function)}.</em>
+<a class="jxr_linenumber" name="L355" href="#L355">355</a> <em class="jxr_javadoccomment">     *</em>
+<a class="jxr_linenumber" name="L356" href="#L356">356</a> <em class="jxr_javadoccomment">     * @param completionStage the completion stage providing the result for the given function</em>
+<a class="jxr_linenumber" name="L357" href="#L357">357</a> <em class="jxr_javadoccomment">     * @param checkedFunction the function returning a new {@link CompletionStage}</em>
+<a class="jxr_linenumber" name="L358" href="#L358">358</a> <em class="jxr_javadoccomment">     * @param &lt;T&gt; the function's argument type</em>
+<a class="jxr_linenumber" name="L359" href="#L359">359</a> <em class="jxr_javadoccomment">     * @param &lt;U&gt; the type of the returned {@link CompletionStage}'s result</em>
+<a class="jxr_linenumber" name="L360" href="#L360">360</a> <em class="jxr_javadoccomment">     * @return the new future</em>
+<a class="jxr_linenumber" name="L361" href="#L361">361</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L362" href="#L362">362</a>     <strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">static</strong> &lt;T, U&gt; CompletableFuture&lt;U&gt; thenCompose(CompletionStage&lt;T&gt; completionStage,
+<a class="jxr_linenumber" name="L363" href="#L363">363</a>             CheckedFunction&lt;? <strong class="jxr_keyword">super</strong> T, ? <strong class="jxr_keyword">extends</strong> CompletionStage&lt;U&gt;&gt; checkedFunction) {
+<a class="jxr_linenumber" name="L364" href="#L364">364</a>         <em class="jxr_comment">// Oddly, javac 1.8.0_73 fails with the type inference, so we need to do an explicit cast.</em>
+<a class="jxr_linenumber" name="L365" href="#L365">365</a>         <strong class="jxr_keyword">return</strong> thenComposeInternal(
+<a class="jxr_linenumber" name="L366" href="#L366">366</a>             (Function&lt;BiConsumer&lt;? <strong class="jxr_keyword">super</strong> T, ? <strong class="jxr_keyword">super</strong> Throwable&gt;, CompletionStage&lt;T&gt;&gt;) completionStage::whenComplete,
+<a class="jxr_linenumber" name="L367" href="#L367">367</a>             checkedFunction
+<a class="jxr_linenumber" name="L368" href="#L368">368</a>         );
+<a class="jxr_linenumber" name="L369" href="#L369">369</a>     }
+<a class="jxr_linenumber" name="L370" href="#L370">370</a> 
+<a class="jxr_linenumber" name="L371" href="#L371">371</a>     <em class="jxr_javadoccomment">/**</em>
+<a class="jxr_linenumber" name="L372" href="#L372">372</a> <em class="jxr_javadoccomment">     * Returns a new {@link CompletableFuture} that, when the given stage completes normally, is executed using the</em>
+<a class="jxr_linenumber" name="L373" href="#L373">373</a> <em class="jxr_javadoccomment">     * supplied {@link Executor}, with the given stage's result as the argument to the supplied function. See the</em>
+<a class="jxr_linenumber" name="L374" href="#L374">374</a> <em class="jxr_javadoccomment">     * {@link CompletionStage} documentation for rules covering exceptional completion.</em>
+<a class="jxr_linenumber" name="L375" href="#L375">375</a> <em class="jxr_javadoccomment">     *</em>
+<a class="jxr_linenumber" name="L376" href="#L376">376</a> <em class="jxr_javadoccomment">     * &lt;p&gt;If {@code function} was a {@link Function} instance identical to {@code checkedFunction}, except for not</em>
+<a class="jxr_linenumber" name="L377" href="#L377">377</a> <em class="jxr_javadoccomment">     * throwing checked exceptions, then this method is equivalent to</em>
+<a class="jxr_linenumber" name="L378" href="#L378">378</a> <em class="jxr_javadoccomment">     * {@code completionStage.thenComposeAsync(function, executor)}.</em>
+<a class="jxr_linenumber" name="L379" href="#L379">379</a> <em class="jxr_javadoccomment">     *</em>
+<a class="jxr_linenumber" name="L380" href="#L380">380</a> <em class="jxr_javadoccomment">     * @param completionStage the completion stage providing the result for the given function</em>
+<a class="jxr_linenumber" name="L381" href="#L381">381</a> <em class="jxr_javadoccomment">     * @param checkedFunction the function returning a new {@link CompletionStage}</em>
+<a class="jxr_linenumber" name="L382" href="#L382">382</a> <em class="jxr_javadoccomment">     * @param executor the executor to use for asynchronous execution</em>
+<a class="jxr_linenumber" name="L383" href="#L383">383</a> <em class="jxr_javadoccomment">     * @param &lt;T&gt; the function's argument type</em>
+<a class="jxr_linenumber" name="L384" href="#L384">384</a> <em class="jxr_javadoccomment">     * @param &lt;U&gt; the type of the returned {@link CompletionStage}'s result</em>
+<a class="jxr_linenumber" name="L385" href="#L385">385</a> <em class="jxr_javadoccomment">     * @return the new future</em>
+<a class="jxr_linenumber" name="L386" href="#L386">386</a> <em class="jxr_javadoccomment">     */</em>
+<a class="jxr_linenumber" name="L387" href="#L387">387</a>     <strong class="jxr_keyword">public</strong> <strong class="jxr_keyword">static</strong> &lt;T, U&gt; CompletableFuture&lt;U&gt; thenComposeAsync(CompletionStage&lt;T&gt; completionStage,
+<a class="jxr_linenumber" name="L388" href="#L388">388</a>             CheckedFunction&lt;? <strong class="jxr_keyword">super</strong> T, ? <strong class="jxr_keyword">extends</strong> CompletionStage&lt;U&gt;&gt; checkedFunction, Executor executor) {
+<a class="jxr_linenumber" name="L389" href="#L389">389</a>         <strong class="jxr_keyword">return</strong> thenComposeInternal(action -&gt; completionStage.whenCompleteAsync(action, executor), checkedFunction);
 <a class="jxr_linenumber" name="L390" href="#L390">390</a>     }
 <a class="jxr_linenumber" name="L391" href="#L391">391</a> 
 <a class="jxr_linenumber" name="L392" href="#L392">392</a>     <strong class="jxr_keyword">private</strong> <strong class="jxr_keyword">static</strong> &lt;T, U&gt; CompletableFuture&lt;U&gt; thenComposeInternal(
@@ -408,7 +408,7 @@
 <a class="jxr_linenumber" name="L400" href="#L400">400</a>                         CompletionStage&lt;U&gt; nextStage = Objects.requireNonNull(checkedFunction.checkedApply(result));
 <a class="jxr_linenumber" name="L401" href="#L401">401</a>                         nextStage.whenComplete((nextResult, nextFailure) -&gt; {
 <a class="jxr_linenumber" name="L402" href="#L402">402</a>                             <strong class="jxr_keyword">if</strong> (nextFailure != <strong class="jxr_keyword">null</strong>) {
-<a class="jxr_linenumber" name="L403" href="#L403">403</a>                                 future.completeExceptionally(encodeException(nextFailure));
+<a class="jxr_linenumber" name="L403" href="#L403">403</a>                                 future.completeExceptionally(wrapInCompletionException(nextFailure));
 <a class="jxr_linenumber" name="L404" href="#L404">404</a>                             } <strong class="jxr_keyword">else</strong> {
 <a class="jxr_linenumber" name="L405" href="#L405">405</a>                                 future.complete(nextResult);
 <a class="jxr_linenumber" name="L406" href="#L406">406</a>                             }
@@ -624,7 +624,7 @@
 <a class="jxr_linenumber" name="L616" href="#L616">616</a>                             <strong class="jxr_keyword">try</strong> {
 <a class="jxr_linenumber" name="L617" href="#L617">617</a>                                 resource.close();
 <a class="jxr_linenumber" name="L618" href="#L618">618</a>                             } <strong class="jxr_keyword">catch</strong> (Throwable throwable) {
-<a class="jxr_linenumber" name="L619" href="#L619">619</a>                                 decode(failure).addSuppressed(throwable);
+<a class="jxr_linenumber" name="L619" href="#L619">619</a>                                 unwrapCompletionException(failure).addSuppressed(throwable);
 <a class="jxr_linenumber" name="L620" href="#L620">620</a>                             }
 <a class="jxr_linenumber" name="L621" href="#L621">621</a>                         } <strong class="jxr_keyword">else</strong> {
 <a class="jxr_linenumber" name="L622" href="#L622">622</a>                             resource.close();
